@@ -13,21 +13,10 @@ resource "aws_iam_access_key" "deploy_user_key" {
   user = aws_iam_user.deploy_user.name
 }
 
-resource "aws_iam_policy" "deploy_policy" {
-  name        = "${var.project}-${var.environment}-deploy-policy"
-  description = "Policy for deployment to ${var.project}-${var.environment}"
-  policy      = file("${path.module}/../../aws_deploy_policy.json")
-
-  tags = {
-    Name        = "${var.project}-${var.environment}-deploy-policy"
-    Environment = var.environment
-    Project     = var.project
-  }
-}
-
-resource "aws_iam_user_policy_attachment" "deploy_user_policy_attachment" {
+# Add AWS managed AdministratorAccess policy to the deploy user
+resource "aws_iam_user_policy_attachment" "deploy_user_admin_policy_attachment" {
   user       = aws_iam_user.deploy_user.name
-  policy_arn = aws_iam_policy.deploy_policy.arn
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 # Optional: Create OpenID Connect Provider for GitHub Actions
@@ -44,7 +33,7 @@ resource "aws_iam_role" "github_actions_role" {
   count = var.create_oidc_provider ? 1 : 0
 
   name = "${var.project}-${var.environment}-github-actions-role"
-  
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -71,11 +60,4 @@ resource "aws_iam_role" "github_actions_role" {
     Environment = var.environment
     Project     = var.project
   }
-}
-
-resource "aws_iam_role_policy_attachment" "github_actions_role_policy_attachment" {
-  count = var.create_oidc_provider ? 1 : 0
-
-  role       = aws_iam_role.github_actions_role[0].name
-  policy_arn = aws_iam_policy.deploy_policy.arn
 }

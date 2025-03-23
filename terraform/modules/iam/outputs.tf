@@ -21,7 +21,7 @@ output "deploy_secret_access_key" {
 
 output "deploy_policy_arn" {
   description = "ARN of the deployment policy"
-  value       = aws_iam_policy.deploy_policy.arn
+  value       = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 
 output "github_actions_role_arn" {
