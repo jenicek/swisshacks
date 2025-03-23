@@ -13,23 +13,13 @@ The easiest way to run the entire application locally is with Docker Compose:
 
 ```bash
 # Build and start all services in development mode
-npm run docker:up
+docker compose up -d
 
 # View logs
-npm run docker:logs
+docker compose logs -f
 
 # Stop all services
-npm run docker:down
-```
-
-For production deployment:
-
-```bash
-# Build and start all services in production mode
-npm run docker:prod:up
-
-# Stop all services
-npm run docker:prod:down
+docker compose down
 ```
 
 Once running, you can access:

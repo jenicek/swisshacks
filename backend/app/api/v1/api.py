@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.v1.endpoints import health
+from app.core.config import settings
 
 api_router = APIRouter()
 
@@ -11,4 +12,14 @@ async def root():
     """
     Root API v1 endpoint.
     """
-    return {"message": "Welcome to SwissHacks API v1"}
+    return {
+        "message": "Welcome to SwissHacks API v1",
+        "version": "1.0",
+        "status": "active",
+        "docs_url": f"{settings.API_V1_STR}/docs",
+        "project_info": {
+            "name": settings.PROJECT_NAME,
+            "description": "A monorepo web application with Next.js frontend and FastAPI backend",
+            "environment": "development"
+        }
+    }

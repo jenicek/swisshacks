@@ -18,8 +18,13 @@ class Settings:
     
     # CORS settings
     BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:3000",  # Frontend development server
-        "http://localhost:8000",  # Backend development server
+        "http://localhost:3000",     # Frontend local development
+        "http://127.0.0.1:3000",     # Frontend local development alternative
+        "http://frontend:3000",      # Frontend Docker service
+        "http://localhost:8000",     # Backend local development
+        "http://127.0.0.1:8000",     # Backend local development alternative
+        "http://backend:8000",       # Backend Docker service
+        "*",                         # For development only - allow all origins
     ]
 
 
