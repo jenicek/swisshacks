@@ -53,3 +53,12 @@ module "rds" {
   db_password   = var.db_password
   ecs_security_group_id = module.ecs.ecs_security_group_id
 }
+
+module "iam" {
+  source        = "./modules/iam"
+  environment   = var.environment
+  project       = var.project_name
+  create_oidc_provider = var.create_oidc_provider
+  github_org    = var.github_org
+  github_repo   = var.github_repo
+}

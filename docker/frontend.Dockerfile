@@ -32,6 +32,10 @@ RUN npm install
 # Copy the rest of the application
 COPY . .
 
+# Set a default API URL for the build process
+# This allows the build to complete but will be overridden at runtime
+ENV NEXT_PUBLIC_API_URL=http://api-placeholder
+
 # Build the application
 RUN npm run build
 

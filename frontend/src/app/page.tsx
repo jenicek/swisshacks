@@ -130,9 +130,10 @@ export default function Home() {
           } else {
             throw new Error('Empty response from API health endpoint');
           }
-        } catch (parseError) {
-          console.error('Error parsing health response:', parseError);
-          throw new Error(`JSON parse error: ${parseError.message}. Raw response: ${response}`);
+        } catch (error) {
+          console.error('Error parsing health response:', error);
+          const parseError = error as Error;
+          throw new Error(`JSON parse error: ${parseError.message || 'Unknown error'}. Raw response: ${response}`);
         }
 
         // Fetch API root info with logging
@@ -149,8 +150,8 @@ export default function Home() {
           } else {
             throw new Error('Empty response from API info endpoint');
           }
-        } catch (parseError) {
-          console.error('Error parsing info response:', parseError);
+        } catch (error) {
+          console.error('Error parsing info response:', error);
           // Continue even if this fails, we already have health status
         }
 

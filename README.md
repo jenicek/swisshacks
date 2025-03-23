@@ -6,6 +6,9 @@ A monorepo containing:
 - `backend`: Python FastAPI backend
 - `scripts`: Python analytical scripts
 - `docker`: Docker configuration files
+- `terraform`: AWS infrastructure as code
+
+[![Deploy to AWS](https://github.com/user/swisshacks/actions/workflows/deploy.yml/badge.svg)](https://github.com/user/swisshacks/actions/workflows/deploy.yml)
 
 ## Getting Started with Docker
 
@@ -72,4 +75,61 @@ pip install -r requirements.txt
 
 # Run a script
 python analyze_data.py
+```
+
+## Deployment
+
+This project is configured with GitHub Actions for CI/CD:
+
+1. Pull requests to `main` branch trigger a Terraform plan
+2. Merges to `main` branch trigger automated deployment to AWS
+
+### Required GitHub Secrets
+
+For CI/CD to work properly, add these secrets to your GitHub repository:
+
+- `AWS_ROLE_ARN` - ARN of the role with permissions to deploy
+- `AWS_ACCESS_KEY_ID` - AWS access key 
+- `AWS_SECRET_ACCESS_KEY` - AWS secret key
+- `DB_USERNAME` - Database username
+- `DB_PASSWORD` - Database password
+
+### AWS IAM Permissions
+
+The IAM user or role used for deployment needs these permissions:
+
+- S3: To store Terraform state files
+- DynamoDB: For state locking (optional)
+- EC2: To create VPC, subnets, security groups, etc.
+- ECS: To create and manage clusters, services, and tasks
+- ECR: To store and manage Docker images
+- ELB: To create and configure load balancers
+- IAM: To create roles and policies for services
+- RDS: To create and manage the database
+- CloudWatch Logs: To create and manage log groups
+
+A sample policy document is provided in `terraform/aws_deploy_policy.json`.
+
+## Infrastructure
+
+The AWS infrastructure is provisioned using Terraform:
+
+- VPC with public and private subnets
+- ECS cluster running the containerized applications
+- RDS PostgreSQL database
+- ECR for container images
+- Load balancer for traffic routing
+- IAM user with deployment permissions
+- Optional GitHub Actions OIDC provider for keyless authentication
+
+### Manual Terraform Deployment
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your values
+
+terraform init
+terraform plan
+terraform apply
 ```
