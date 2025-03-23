@@ -68,3 +68,15 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+!terraform.tfvars.example
+.terraformrc
+terraform.rc
+.terraform.lock.hcl
+crash.log
+crash.*.log
