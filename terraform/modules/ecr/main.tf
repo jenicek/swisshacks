@@ -14,25 +14,8 @@ resource "aws_ecr_repository" "backend" {
   }
 }
 
-resource "aws_ecr_repository" "frontend" {
-  name                 = "${var.project}-${var.environment}-frontend"
-  image_tag_mutability = "MUTABLE"
-  force_delete         = true
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Name        = "${var.project}-${var.environment}-frontend-ecr"
-    Environment = var.environment
-    Project     = var.project
-  }
-}
-
 resource "aws_ecr_lifecycle_policy" "policy" {
-  count      = 2
-  repository = count.index == 0 ? aws_ecr_repository.backend.name : aws_ecr_repository.frontend.name
+  repository = aws_ecr_repository.backend.name
 
   policy = jsonencode({
     rules = [

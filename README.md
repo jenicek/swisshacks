@@ -82,7 +82,9 @@ python analyze_data.py
 This project is configured with GitHub Actions for CI/CD:
 
 1. Pull requests to `main` branch trigger a Terraform plan
-2. Merges to `main` branch trigger automated deployment to AWS
+2. Merges to `main` branch trigger automated deployment to AWS:
+   - Backend deployed to ECS Fargate
+   - Frontend static files built and deployed to S3/CloudFront
 
 ### Required GitHub Secrets
 
@@ -99,10 +101,12 @@ For CI/CD to work properly, add these secrets to your GitHub repository:
 The AWS infrastructure is provisioned using Terraform:
 
 - VPC with public and private subnets
-- ECS cluster running the containerized applications
+- ECS cluster running the containerized backend application
 - RDS PostgreSQL database
 - ECR for container images
-- Load balancer for traffic routing
+- Load balancer for API traffic routing
+- S3 bucket for hosting static frontend files
+- CloudFront distribution for global delivery of frontend assets
 - IAM user with deployment permissions
 - Optional GitHub Actions OIDC provider for keyless authentication
 
