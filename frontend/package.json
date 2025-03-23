@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "export": "next build && next export"
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "next": "^14.1.0",
