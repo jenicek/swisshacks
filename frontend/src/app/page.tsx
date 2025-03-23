@@ -104,6 +104,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [response, setResponse] = useState<string | null>(null);
+  const [uptime, setUptime] = useState<number | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -164,6 +165,27 @@ export default function Home() {
 
     fetchData();
   }, []);
+  
+  // Set up SSE for uptime stream
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiUrl) return;
+    
+    const eventSource = new EventSource(`${apiUrl}/api/v1/uptime/stream`);
+    
+    eventSource.onmessage = (event) => {
+      setUptime(parseInt(event.data, 10));
+    };
+    
+    eventSource.onerror = (error) => {
+      console.error('SSE Error:', error);
+      eventSource.close();
+    };
+    
+    return () => {
+      eventSource.close();
+    };
+  }, []);
 
   return (
     <main style={styles.main as React.CSSProperties}>
@@ -223,6 +245,15 @@ export default function Home() {
                 <p style={styles.infoRow as React.CSSProperties}>Environment: <span style={{textTransform: 'capitalize'}}>{apiInfo.project_info.environment}</span></p>
               </div>
             )}
+            
+            <div style={styles.card as React.CSSProperties}>
+              <h2 style={styles.cardTitle as React.CSSProperties}>Server Uptime</h2>
+              <p style={styles.statusText as React.CSSProperties}>
+                Current Uptime: <span style={styles.statusHealthy as React.CSSProperties}>
+                  {uptime !== null ? `${uptime} seconds` : 'Connecting...'}
+                </span>
+              </p>
+            </div>
           </div>
         )}
       </div>

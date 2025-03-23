@@ -1,11 +1,12 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import health
+from app.api.v1.endpoints import health, uptime
 from app.core.config import settings
 
 api_router = APIRouter()
 
 api_router.include_router(health.router)
+api_router.include_router(uptime.router)
 
 @api_router.get("/")
 async def root():
