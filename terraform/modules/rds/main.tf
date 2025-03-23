@@ -50,7 +50,7 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids  = [aws_security_group.db.id]
   publicly_accessible     = false
   backup_retention_period = 7
-  deletion_protection     = true
+  deletion_protection     = false
   skip_final_snapshot     = false
   final_snapshot_identifier = "${var.project}-${var.environment}-db-final-snapshot"
   

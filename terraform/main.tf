@@ -34,13 +34,14 @@ module "ecr" {
 }
 
 module "ecs" {
-  source      = "./modules/ecs"
-  environment = var.environment
-  project     = var.project_name
-  vpc_id      = module.vpc.vpc_id
-  public_subnets = module.vpc.public_subnets
-  app_port    = 8000 # Backend API port
-  depends_on  = [module.ecr]
+  source           = "./modules/ecs"
+  environment      = var.environment
+  project          = var.project_name
+  vpc_id           = module.vpc.vpc_id
+  public_subnets   = module.vpc.public_subnets
+  app_port         = 8000 # Backend API port
+  backend_image_url = module.ecr.repository_url.backend
+  depends_on       = [module.ecr]
 }
 
 module "rds" {

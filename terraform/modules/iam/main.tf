@@ -1,23 +1,4 @@
-resource "aws_iam_user" "deploy_user" {
-  name = "${var.project}-${var.environment}-deploy-user"
-  path = "/"
-
-  tags = {
-    Name        = "${var.project}-${var.environment}-deploy-user"
-    Environment = var.environment
-    Project     = var.project
-  }
-}
-
-resource "aws_iam_access_key" "deploy_user_key" {
-  user = aws_iam_user.deploy_user.name
-}
-
-# Add AWS managed AdministratorAccess policy to the deploy user
-resource "aws_iam_user_policy_attachment" "deploy_user_admin_policy_attachment" {
-  user       = aws_iam_user.deploy_user.name
-  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
-}
+# Deploy user and permissions removed
 
 # Optional: Create OpenID Connect Provider for GitHub Actions
 resource "aws_iam_openid_connect_provider" "github_actions" {
