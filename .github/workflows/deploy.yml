@@ -117,7 +117,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         working-directory: ./frontend
         env:
-          NEXT_PUBLIC_API_URL: http://${{ steps.tf-outputs.outputs.API_URL }}
+          NEXT_PUBLIC_API_URL: https://${{ steps.tf-outputs.outputs.API_URL }}
         run: |
           npm run build
 

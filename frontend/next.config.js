@@ -12,7 +12,9 @@ const nextConfig = {
   
   // Define environment variables for client
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000',
+    // For production, use relative URL to leverage CloudFront API proxy
+    // For local dev, use the full URL to the backend
+    NEXT_PUBLIC_API_URL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:8000',
   },
 }
 

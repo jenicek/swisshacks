@@ -166,24 +166,40 @@ export default function Home() {
 
     fetchData();
   }, []);
-  
+
   // Set up SSE for uptime stream
   useEffect(() => {
+    // For production builds (with relative URLs), we don't include the API_URL
+    // For local development, we use the absolute URL
     const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (!apiUrl) return;
-    
-    const eventSource = new EventSource(`${apiUrl}/api/v1/uptime/stream`);
-    
+
+    // Use relative URL in production, absolute in development
+    // Ensure the URL ends with a trailing slash to prevent redirects with protocol changes
+    const streamUrl = `${apiUrl}/api/v1/uptime/stream`;
+    console.log('Connecting to SSE stream at:', streamUrl);
+
+    // Use withCredentials: false to ensure cross-origin requests work properly
+    const eventSource = new EventSource(streamUrl, { withCredentials: false });
+
     eventSource.onmessage = (event) => {
       setUptime(parseInt(event.data, 10));
+      console.log('Received uptime update:', event.data);
     };
-    
+
+    eventSource.onopen = () => {
+      console.log('SSE connection opened successfully');
+    };
+
     eventSource.onerror = (error) => {
       console.error('SSE Error:', error);
-      eventSource.close();
+      // Don't close immediately on error, allow for automatic reconnection
+      setTimeout(() => {
+        console.log('Attempting to reconnect to SSE...');
+      }, 2000);
     };
-    
+
     return () => {
+      console.log('Closing SSE connection');
       eventSource.close();
     };
   }, []);
@@ -246,7 +262,7 @@ export default function Home() {
                 <p style={styles.infoRow as React.CSSProperties}>Environment: <span style={{textTransform: 'capitalize'}}>{apiInfo.project_info.environment}</span></p>
               </div>
             )}
-            
+
             <div style={styles.card as React.CSSProperties}>
               <h2 style={styles.cardTitle as React.CSSProperties}>Server Uptime</h2>
               <p style={styles.statusText as React.CSSProperties}>

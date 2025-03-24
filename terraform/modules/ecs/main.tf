@@ -14,15 +14,22 @@ resource "aws_ecs_cluster" "main" {
 }
 
 resource "aws_security_group" "alb" {
-  name        = "${var.project}-${var.environment}-alb-sg"
-  description = "Security group for ALB"
-  vpc_id      = var.vpc_id
+  # Use name_prefix instead of name to avoid conflicts with existing resources
+  name_prefix  = "${var.project}-${var.environment}-alb-sg-"
+  description  = "Security group for ALB (including CloudFront access)"
+  vpc_id       = var.vpc_id
+
+  # Lifecycle management to handle resource replacement
+  lifecycle {
+    create_before_destroy = true
+  }
 
   ingress {
     protocol    = "tcp"
     from_port   = 80
     to_port     = 80
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow HTTP traffic from anywhere (including CloudFront)"
   }
 
   ingress {
@@ -30,6 +37,7 @@ resource "aws_security_group" "alb" {
     from_port   = 443
     to_port     = 443
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow HTTPS traffic from anywhere (including CloudFront)"
   }
 
   egress {
@@ -47,15 +55,22 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.project}-${var.environment}-ecs-tasks-sg"
-  description = "Allow inbound traffic from ALB only"
-  vpc_id      = var.vpc_id
+  # Use name_prefix to avoid conflicts with existing resources
+  name_prefix  = "${var.project}-${var.environment}-ecs-tasks-sg-"
+  description  = "Allow inbound traffic from ALB only"
+  vpc_id       = var.vpc_id
+
+  # Lifecycle management to handle resource replacement
+  lifecycle {
+    create_before_destroy = true
+  }
 
   ingress {
     protocol    = "tcp"
     from_port   = var.app_port
     to_port     = var.app_port
     cidr_blocks = ["0.0.0.0/0"]
+    description = "Allow traffic to backend app port"
   }
 
   egress {
@@ -79,6 +94,12 @@ resource "aws_alb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnets
 
+  # Add dependency on security group to ensure proper destroy order
+  depends_on = [aws_security_group.alb]
+
+  # Enable deletion protection in non-dev environments
+  enable_deletion_protection = var.environment != "dev"
+
   tags = {
     Name        = "${var.project}-${var.environment}-alb"
     Environment = var.environment
@@ -92,15 +113,18 @@ resource "aws_alb_target_group" "backend" {
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
+  
+  # Increased timeouts for API requests
+  deregistration_delay = 30
 
   health_check {
     path                = "/api/v1/health"
     protocol            = "HTTP"
     matcher             = "200"
     interval            = 30
-    timeout             = 5
+    timeout             = 10          # Increased timeout
     healthy_threshold   = 2
-    unhealthy_threshold = 2
+    unhealthy_threshold = 5           # More tolerant of occasional failures
   }
 
   tags = {
@@ -118,6 +142,17 @@ resource "aws_alb_listener" "http" {
   default_action {
     type             = "forward"
     target_group_arn = aws_alb_target_group.backend.id
+  }
+
+  # Add explicit dependency on ALB and target group
+  depends_on = [
+    aws_alb.main,
+    aws_alb_target_group.backend
+  ]
+
+  # Setting lifecycle to ensure proper destruction order
+  lifecycle {
+    create_before_destroy = true
   }
 }
 
@@ -263,7 +298,7 @@ resource "aws_ecs_service" "backend" {
   platform_version                   = "LATEST"
   health_check_grace_period_seconds  = 60
   enable_execute_command             = true
-  
+
   network_configuration {
     subnets          = var.public_subnets
     security_groups  = [aws_security_group.ecs_tasks.id]
@@ -276,9 +311,20 @@ resource "aws_ecs_service" "backend" {
     container_port   = var.app_port
   }
 
+  # Forces new deployment on application restart
+  force_new_deployment = true
+
+  # Proper dependencies to ensure correct order in creation and destruction
   depends_on = [
-    aws_alb_listener.http
+    aws_alb_listener.http,
+    aws_alb.main,
+    aws_alb_target_group.backend
   ]
+
+  # Setting proper lifecycle hooks to prevent destroy errors
+  lifecycle {
+    create_before_destroy = true
+  }
 
   tags = {
     Name        = "${var.project}-${var.environment}-backend-service"

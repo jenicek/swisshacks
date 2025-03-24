@@ -56,10 +56,11 @@ module "rds" {
 }
 
 module "s3" {
-  source      = "./modules/s3"
-  environment = var.environment
-  project     = var.project_name
-  aws_region  = var.aws_region
+  source              = "./modules/s3"
+  environment         = var.environment
+  project             = var.project_name
+  aws_region          = var.aws_region
+  backend_alb_dns_name = module.ecs.alb_dns_name
 }
 
 module "iam" {

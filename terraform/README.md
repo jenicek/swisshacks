@@ -8,6 +8,7 @@ This directory contains Terraform configurations to provision AWS infrastructure
 - **ECR**: Docker image repositories for backend and frontend
 - **ECS**: Fargate cluster for running containerized applications
 - **RDS**: PostgreSQL database
+- **S3 + CloudFront**: Static website hosting with API proxy capabilities
 
 ## Prerequisites
 

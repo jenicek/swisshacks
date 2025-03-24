@@ -29,6 +29,7 @@ Once running, you can access:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:8000/api/v1
 - API Documentation: http://localhost:8000/api/v1/docs
+- In production, both frontend and API are accessible via the same CloudFront URL
 - PostgreSQL Database: localhost:5432 (username: postgres, password: postgres, database: swisshacks)
 
 ## Manual Setup
@@ -106,7 +107,7 @@ The AWS infrastructure is provisioned using Terraform:
 - ECR for container images
 - Load balancer for API traffic routing
 - S3 bucket for hosting static frontend files
-- CloudFront distribution for global delivery of frontend assets
+- CloudFront distribution for global delivery of frontend assets and API proxying
 - IAM user with deployment permissions
 - Optional GitHub Actions OIDC provider for keyless authentication
 
