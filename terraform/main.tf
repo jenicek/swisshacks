@@ -53,6 +53,7 @@ module "rds" {
   db_username   = var.db_username
   db_password   = var.db_password
   ecs_security_group_id = module.ecs.ecs_security_group_id
+  skip_final_snapshot = var.skip_final_snapshot
 }
 
 module "s3" {

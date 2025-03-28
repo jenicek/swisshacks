@@ -35,3 +35,9 @@ variable "ecs_security_group_id" {
   type        = string
   default     = "" # Will be filled from the ECS module
 }
+
+variable "skip_final_snapshot" {
+  description = "Whether to skip final snapshot when destroying the database"
+  type        = bool
+  default     = true
+}

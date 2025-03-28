@@ -51,7 +51,7 @@ resource "aws_db_instance" "main" {
   publicly_accessible     = false
   backup_retention_period = 7
   deletion_protection     = false
-  skip_final_snapshot     = false
+  skip_final_snapshot     = var.skip_final_snapshot
   final_snapshot_identifier = "${var.project}-${var.environment}-db-final-snapshot"
   
   tags = {

@@ -57,3 +57,9 @@ variable "github_repo" {
   type        = string
   default     = ""
 }
+
+variable "skip_final_snapshot" {
+  description = "Whether to skip final snapshot when destroying the database"
+  type        = bool
+  default     = true
+}
