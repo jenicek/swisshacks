@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Development-focused docker-compose file
 # Run with: docker compose up -d
 
