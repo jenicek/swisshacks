@@ -2,6 +2,10 @@
 pandas>=2.2.0
 numpy>=1.26.0
 python-docx>=0.8.11  # For extracting text from DOCX files
+PyPDF2>=3.0.0        # For extracting text from PDF files
+
+# HTTP requests
+requests>=2.31.0     # For making API calls
 
 # Utilities
 matplotlib>=3.8.0
