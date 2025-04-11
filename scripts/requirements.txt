@@ -1,6 +1,13 @@
+# Data processing libraries
 pandas>=2.2.0
 numpy>=1.26.0
+python-docx>=0.8.11  # For extracting text from DOCX files
+
+# Utilities
 matplotlib>=3.8.0
 seaborn>=0.13.0
 scipy>=1.12.0
 jupyter>=1.0.0
+python-multipart>=0.0.5  # For handling form data and file uploads
+tqdm>=4.64.0
+python-dotenv>=1.0.0
