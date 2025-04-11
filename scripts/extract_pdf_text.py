@@ -12,7 +12,6 @@ import os
 import sys
 import json
 from pathlib import Path
-from pprint import pprint
 
 # Add the parent directory to the path so we can import our modules
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
@@ -20,7 +19,6 @@ from data_parsing.parse_pdf import (
     extract_text_from_pdf,
     extract_pdf_metadata,
     extract_form_fields,
-    find_account_information,
     extract_tables_from_pdf
 )
 
@@ -30,7 +28,6 @@ def main():
     parser.add_argument("file", help="Path to the PDF file")
     parser.add_argument("--metadata", "-m", action="store_true", help="Extract metadata")
     parser.add_argument("--forms", "-f", action="store_true", help="Extract form fields (if available)")
-    parser.add_argument("--account-info", "-a", action="store_true", help="Find account information")
     parser.add_argument("--tables", "-t", action="store_true", help="Extract tables from the PDF")
     parser.add_argument("--password", "-p", help="Password for encrypted PDF")
     parser.add_argument("--output", "-o", help="Output file (default: stdout)")
@@ -78,17 +75,6 @@ def main():
                     print("No form fields found in the PDF", file=sys.stderr)
             except Exception as e:
                 print(f"Warning: Could not extract form fields: {e}", file=sys.stderr)
-        
-        # Find account information if requested
-        if args.account_info:
-            try:
-                account_info = find_account_information(text)
-                if account_info:
-                    results["account_info"] = account_info
-                else:
-                    print("No account information found in the PDF", file=sys.stderr)
-            except Exception as e:
-                print(f"Warning: Could not extract account information: {e}", file=sys.stderr)
         
         # Extract tables if requested
         if args.tables:

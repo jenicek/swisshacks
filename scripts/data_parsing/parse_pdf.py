@@ -4,8 +4,7 @@ Particularly useful for account opening forms and financial documents.
 """
 
 import io
-from typing import Union, BinaryIO, List, Dict, Any, Optional, Tuple
-from datetime import datetime
+from typing import Union, BinaryIO, List, Dict, Any
 import re
 
 try:
@@ -84,13 +83,15 @@ def extract_pdf_metadata(file_content: Union[bytes, BinaryIO]) -> Dict[str, Any]
         raise ValueError(f"Error extracting metadata from PDF: {str(e)}")
 
 
-def extract_form_fields(file_content: Union[bytes, BinaryIO]) -> Dict[str, Any]:
+def extract_form_fields(file_content: Union[bytes, BinaryIO], clean_output: bool = True) -> Dict[str, Any]:
     """
     Extract form fields from a PDF file.
     Particularly useful for account opening forms and financial documents.
     
     Args:
         file_content: Either bytes content of the PDF or a file-like object
+        clean_output: If True, returns only field names and values (simplified format)
+                     If False, returns the raw field data
         
     Returns:
         Dict: Form field names and their values
@@ -104,46 +105,91 @@ def extract_form_fields(file_content: Union[bytes, BinaryIO]) -> Dict[str, Any]:
         
         # Get form fields if they exist
         form_data = {}
-        if pdf.get_fields():
-            form_data = pdf.get_fields()
+        raw_fields = pdf.get_fields() or {}
+        
+        if clean_output:
+            # Process and clean form fields
+            for field_name, field_data in raw_fields.items():
+                # Extract the actual field name from the '/T' key
+                name = field_data.get('/T', field_name).strip('/')
+                
+                # Extract the value based on field type
+                field_type = field_data.get('/FT')
+                
+                # Handle different field types
+                if field_type == '/Tx':  # Text field
+                    value = field_data.get('/V', '')
+                    if isinstance(value, str):
+                        value = value.strip('/')
+                elif field_type == '/Btn':  # Button (checkbox, radio)
+                    value = field_data.get('/V', '') == '/Yes'
+                elif field_type == '/Sig':  # Signature field
+                    # Check if the signature field has content
+                    if '/V' in field_data and field_data['/V'] is not None:
+                        value = True  # Signature exists
+                    else:
+                        value = False  # No signature
+                else:
+                    # For other field types, just get the raw value
+                    value = field_data.get('/V', '')
+                    if isinstance(value, str):
+                        value = value.strip('/')
+                
+                form_data[name] = value
+        else:
+            # Return raw field data
+            form_data = raw_fields
+            
+        # Check for signature fields specifically
+        signature_fields = {}
+        for field_name, field_data in raw_fields.items():
+            if field_data.get('/FT') == '/Sig':
+                name = field_data.get('/T', field_name).strip('/')
+                has_signature = '/V' in field_data and field_data['/V'] is not None
+                signature_fields[name] = has_signature
+                
+        # Check for embedded signatures (not form fields)
+        embedded_signature_found = False
+        signature_section_patterns = [
+            r'(?i)specimen\s+signature',
+            r'(?i)signature\s+specimen',
+            r'(?i)signature\s+of\s+applicant',
+            r'(?i)customer\s+signature'
+        ]
+        
+        # Check text content for signature sections
+        for page_num, page in enumerate(pdf.pages):
+            text = page.extract_text() or ""
+            
+            # Look for signature section patterns in the text
+            for pattern in signature_section_patterns:
+                if re.search(pattern, text):
+                    # If we find a signature section, check for images or XObject references
+                    if "/Resources" in page and "/XObject" in page["/Resources"]:
+                        # XObject can be images or other embedded objects
+                        embedded_signature_found = True
+                        break
+                        
+            if embedded_signature_found:
+                break
+        
+        # Add embedded signature detection to the output
+        if embedded_signature_found:
+            signature_fields['specimen_signature'] = True
+            
+        if signature_fields:
+            form_data['_signature_fields'] = signature_fields
+            
+        # Check for form fields related to signatures even if they're not signature type fields
+        for field_name, value in form_data.items():
+            if ('signature' in field_name.lower() or 'sign' in field_name.lower()) and value:
+                if '_signature_fields' not in form_data:
+                    form_data['_signature_fields'] = {}
+                form_data['_signature_fields'][field_name] = True
             
         return form_data
     except Exception as e:
         raise ValueError(f"Error extracting form fields from PDF: {str(e)}")
-
-
-def find_account_information(text: str) -> Dict[str, Any]:
-    """
-    Parse extracted text to find common account opening information.
-    Uses regex patterns to identify common fields in financial forms.
-    
-    Args:
-        text: The extracted text from the PDF
-        
-    Returns:
-        Dict: Extracted account information
-    """
-    account_info = {}
-    
-    # Define regex patterns for common account fields
-    patterns = {
-        'account_number': r'(?:Account|Acct)(?:\s+|\.)(?:No|Number|#|Num)(?:\.|\:|\s*)\s*([A-Z0-9]{4,20})',
-        'name': r'(?:Name|Full Name|Customer Name)(?:\.|\:|\s*)\s*([A-Za-z\s\.]{5,50})',
-        'date_of_birth': r'(?:Date of Birth|DOB|Birth Date)(?:\.|\:|\s*)\s*(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})',
-        'address': r'(?:Address|Residential Address|Home Address)(?:\.|\:|\s*)\s*([A-Za-z0-9\s\.,#\-]{10,100})',
-        'phone': r'(?:Phone|Telephone|Mobile|Cell)(?:\.|\:|\s*)\s*((?:\+\d{1,3}[\s\-\.])?\(?\d{3}\)?[\s\-\.]?\d{3}[\s\-\.]?\d{4})',
-        'email': r'(?:Email|E-mail)(?:\.|\:|\s*)\s*([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})',
-        'tax_id': r'(?:SSN|Tax ID|TIN|Social Security)(?:\.|\:|\s*)\s*(\d{3}[\s\-]?\d{2}[\s\-]?\d{4})',
-    }
-    
-    # Extract information using the patterns
-    for field, pattern in patterns.items():
-        match = re.search(pattern, text, re.IGNORECASE)
-        if match:
-            account_info[field] = match.group(1).strip()
-    
-    return account_info
-
 
 def extract_tables_from_pdf(file_content: Union[bytes, BinaryIO]) -> List[List[str]]:
     """
