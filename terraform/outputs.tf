@@ -42,3 +42,26 @@ output "cloudfront_distribution_id" {
   description = "CloudFront distribution ID"
   value       = module.s3.cloudfront_distribution_id
 }
+
+# Training data S3 bucket and credentials
+output "training_data_bucket_name" {
+  description = "Name of the training data S3 bucket"
+  value       = module.s3.training_data_bucket_name
+}
+
+output "training_data_user_name" {
+  description = "Name of the IAM user for training data access"
+  value       = module.s3.training_data_user_name
+}
+
+output "training_data_access_key" {
+  description = "Access key for the training data user"
+  value       = module.s3.training_data_access_key
+  sensitive   = false
+}
+
+output "training_data_secret_key" {
+  description = "Secret key for the training data user"
+  value       = module.s3.training_data_secret_key
+  sensitive   = true
+}
