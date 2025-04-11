@@ -1,4 +1,6 @@
 import os
+import json
+import gzip
 import boto3
 from botocore.exceptions import ClientError
 from typing import Union, BinaryIO, Optional
@@ -31,7 +33,6 @@ def store_object(data: Union[str, bytes], object_name: str) -> bool:
 
     Args:
         data: The data to upload (string or bytes)
-        bucket: S3 bucket name
         object_name: S3 object name
 
     Returns:
@@ -49,12 +50,31 @@ def store_object(data: Union[str, bytes], object_name: str) -> bool:
         logger.error(f"Error uploading data to S3: {e}")
         return False
 
+
+def store_dict(data: dict, object_name: str) -> bool:
+    """
+    Upload a dictionary as a JSON object to an S3 bucket.
+
+    Args:
+        data: The dictionary to upload
+        object_name: S3 object name
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        json_data = json.dumps(data)
+        compressed_data = gzip.compress(json_data.encode('utf-8'))
+        return store_object(compressed_data, object_name)
+    except Exception as e:
+        logger.error(f"Error uploading dictionary to S3: {e}")
+        return False
+
+
 def read_object(object_name: str) -> Optional[bytes]:
     """
     Read data from an S3 object.
 
     Args:
-        bucket: S3 bucket name
         object_name: S3 object name
 
     Returns:
@@ -69,12 +89,33 @@ def read_object(object_name: str) -> Optional[bytes]:
         logger.error(f"Error reading object from S3: {e}")
         return None
 
+
+def read_dict(object_name: str) -> Optional[dict]:
+    """
+    Read a JSON object from an S3 bucket and decompress it.
+
+    Args:
+        object_name: S3 object name
+
+    Returns:
+        Dictionary if successful, None otherwise
+    """
+    try:
+        compressed_data = read_object(object_name)
+        if compressed_data:
+            json_data = gzip.decompress(compressed_data)
+            return json.loads(json_data.decode('utf-8'))
+        return None
+    except Exception as e:
+        logger.error(f"Error reading dictionary from S3: {e}")
+        return None
+
+
 def list_objects(prefix: str = '') -> list:
     """
     List objects in an S3 bucket with optional prefix.
 
     Args:
-        bucket: S3 bucket name
         prefix: Object key prefix
 
     Returns:
@@ -95,7 +136,6 @@ def check_object_exists(object_name: str) -> bool:
     Check if an object exists in an S3 bucket.
 
     Args:
-        bucket: S3 bucket name
         object_name: S3 object name
 
     Returns:
@@ -112,7 +152,6 @@ def delete_object(object_name: str) -> bool:
     Delete an object from an S3 bucket.
 
     Args:
-        bucket: S3 bucket name
         object_name: S3 object name
 
     Returns:
@@ -128,7 +167,7 @@ def delete_object(object_name: str) -> bool:
 
 
 if __name__ == "__main__":
-    store_object(b"Hello, S3!", "test/hello.txt")
-    data = read_object("test/hello.txt")
+    store_dict({"foo": "bar"}, "test/hello.txt")
+    data = read_dict("test/hello.txt")
     if data:
-        print(data.decode('utf-8'))
+        print(data)
