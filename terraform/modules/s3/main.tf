@@ -9,6 +9,64 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
+resource "aws_s3_bucket" "training_data" {
+  bucket = "${var.project}-${var.environment}-training-data"
+  force_destroy = true
+
+  tags = {
+    Name        = "${var.project}-${var.environment}-training-data"
+    Environment = var.environment
+    Project     = var.project
+  }
+}
+
+# Create an IAM user for training data access
+resource "aws_iam_user" "training_data_user" {
+  name = "${var.project}-${var.environment}-training-data-user"
+  
+  tags = {
+    Name        = "${var.project}-${var.environment}-training-data-user"
+    Environment = var.environment
+    Project     = var.project
+  }
+}
+
+# Create access key for the training data user
+resource "aws_iam_access_key" "training_data_key" {
+  user = aws_iam_user.training_data_user.name
+}
+
+# Create a policy that allows access to the training data bucket
+resource "aws_iam_policy" "training_data_policy" {
+  name        = "${var.project}-${var.environment}-training-data-policy"
+  description = "Policy for accessing the training data bucket"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = [
+          "s3:ListBucket",
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          aws_s3_bucket.training_data.arn,
+          "${aws_s3_bucket.training_data.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Attach the policy to the user
+resource "aws_iam_user_policy_attachment" "training_data_attachment" {
+  user       = aws_iam_user.training_data_user.name
+  policy_arn = aws_iam_policy.training_data_policy.arn
+}
+
 resource "aws_s3_bucket_website_configuration" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
