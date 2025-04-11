@@ -3,7 +3,7 @@
 Script to call the game API at hackathon-api.mlo.sehlat.io
 
 Usage:
-    python call_game_api.py --player-name NAME --player-id ID [--api-key KEY]
+    python call_game_api.py --player-name NAME --api-key KEY
 """
 
 import argparse
@@ -12,13 +12,12 @@ import json
 import sys
 
 
-def start_game(player_name, player_id, api_key):
+def start_game(player_name, api_key):
     """
     Start a new game session for the player.
     
     Args:
         player_name (str): The name of the player
-        player_id (str): The ID of the player
         api_key (str): API key for authentication
     
     Returns:
@@ -34,16 +33,12 @@ def start_game(player_name, player_id, api_key):
     # Add API key to headers if provided - try multiple common API key header formats
     if api_key:
         # Try different common API key header formats
-        headers["X-API-Key"] = api_key
         headers["x-api-key"] = api_key
-        headers["api_key"] = api_key
-        headers["apikey"] = api_key
         # Keep the Bearer format as well
         headers["Authorization"] = f"Bearer {api_key}"
     
     payload = {
         "player_name": player_name,
-        "player_id": player_id
     }
     
     print(f"Sending request to: {url}")
@@ -71,13 +66,12 @@ def start_game(player_name, player_id, api_key):
 def main():
     parser = argparse.ArgumentParser(description="Call the game API to start a new game session")
     parser.add_argument("--player-name", required=True, help="Name of the player")
-    parser.add_argument("--player-id", required=True, help="ID of the player")
     parser.add_argument("--api-key", help="API key for authentication")
     parser.add_argument("--output", "-o", help="Output file for the response (default: stdout)")
     args = parser.parse_args()
     
     # Call the API
-    response = start_game(args.player_name, args.player_id, args.api_key)
+    response = start_game(args.player_name, args.api_key)
     
     if response:
         # Format the response as JSON
