@@ -65,6 +65,8 @@ uvicorn app.main:app --reload
 ### Scripts
 
 ```bash
+. .env
+
 cd scripts
 
 # Create and activate virtual environment
