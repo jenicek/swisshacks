@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from client_data.client_data import ClientData
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import Tuple
 import unicodedata
 import textdistance
@@ -60,6 +60,9 @@ class SimpleModel(Model):
             print("Copy-paste detected in the description")
             return 0
         if flag_nationality(client):
+            return 0
+        if flat_date_consistencies(client):
+            print("Date inconsistencies detected")
             return 0
         return 1
 
@@ -135,10 +138,10 @@ def flag_country(client: ClientData):
     return False
 
 def flag_nationality(client: ClientData):
-    
+
     passport_nationality = client.passport["nationality"].lower()
     profile_nationality = client.client_profile["nationality"].lower()
-    
+
     if len(passport_nationality) == len(profile_nationality):
         if passport_nationality != profile_nationality:
             print(f"Client nationality mismatch: {client.passport['nationality']} != {client.client_profile['nationality']}")
@@ -228,7 +231,7 @@ def flag_inconsistent_name(client: ClientData):
 
     passport_last_name: str = remove_accents(client.passport.get("last_name").lower())
     passport_given_name: str = remove_accents(client.passport.get("given_name").lower())
-    
+
 
     # account.json data consistency
     if account_account_name != account_name:
@@ -378,66 +381,39 @@ def flag_copy_paste(client: ClientData):
         if len(sentence) > 120:
             return True
 
-# def flat_date_consistencies(client: ClientData):
 
-#     for duplicate_field in (
-#         "birth_date",
-#         "passport_issue_date",
-#         "passport_expiry_date",
-#         "passport_number",
-#     ):
-#         if client.passport[duplicate_field] != client.client_profile[duplicate_field]:
-#             return True
 
-#     today = datetime.strptime("2025-04-01", "%Y-%m-%d").date()
-#     birth_date = datetime.strptime(
-#         client.client_profile["birth_date"], "%Y-%m-%d"
-#     ).date()
-#     passport_issue_date = datetime.strptime(
-#         client.client_profile["passport_issue_date"], "%Y-%m-%d"
-#     ).date()
-#     passport_expiry_date = datetime.strptime(
-#         client.client_profile["passport_expiry_date"], "%Y-%m-%d"
-#     ).date()
+def flat_date_consistencies(client: ClientData):
+    for field1, field2 in (
+        ("birth_date", "birth_date"),
+        ("passport_issue_date", "id_issue_date"),
+        ("passport_expiry_date", "id_expiry_date"),
+        ("passport_number", "passport_id"),
+    ):
+        if client.passport[field1] != client.client_profile[field2]:
+            return True
 
-#     secondary_school_grad = client.client_profile["secondary_school"]["graduation_year"]
-#     higher_education_years = [
-#         edu["graduation_year"] for edu in client.client_profile["higher_education"]
-#     ]
-#     employment_start_ends = [
-#         (e["start_year"], e["end_year"])
-#         for e in client.client_profile["employment_history"]
-#     ]
+    today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
+    birth_date = datetime.strptime(
+        client.client_profile["birth_date"], "%Y-%m-%d"
+    ).date()
+    issue_date = datetime.strptime(
+        client.client_profile["id_issue_date"], "%Y-%m-%d"
+    ).date()
+    expiry_date = datetime.strptime(
+        client.client_profile["id_expiry_date"], "%Y-%m-%d"
+    ).date()
 
-#     try:
-#         prev = 0
-#         for start, end in employment_start_ends:
-#             assert prev <= start  # TODO should be an error?
+    # TODO: validate dates from key "employment"
 
-#         assert birth_date < passport_issue_date < passport_expiry_date
-#         assert passport_issue_date < today
-#         assert (
-#             birth_date.year + 16 < employment_start_ends[0][0]
-#             if employment_start_ends
-#             else today.year
-#         )
-#         assert birth_date.year + 12 < secondary_school_grad
-#         assert today.year - birth_date.year < 120
-#         assert birth_date < date(secondary_school_grad, 1, 1) <= today
-#         assert all(
-#             date(secondary_school_grad, 1, 1) <= date(higher_edu, 1, 1) <= today
-#             for higher_edu in higher_education_years
-#         )
-#         assert all(
-#             birth_date
-#             < date(start, 1, 1)
-#             <= (date(end, 1, 1) if end else today)
-#             <= today
-#             for start, end in employment_start_ends
-#         )
-#     except AssertionError:
-#         return True
-#     return False
+    if not birth_date < issue_date < today:
+        return True
+    if not issue_date < expiry_date:
+        return True
+    if not 18 <= today.year - birth_date.year < 120:
+        return True
+    return False
+
 
 
 # def flag_dates(client: ClientData):
