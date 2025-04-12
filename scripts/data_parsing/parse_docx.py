@@ -1,9 +1,8 @@
 import docx
 import os
-import json
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 from datetime import datetime
 
 @dataclass_json
@@ -234,7 +233,7 @@ class DocxParser:
     def extract_preferred_markets(text):
         """Extract preferred markets from checkbox text"""
         markets = text.split(",")
-        return markets if markets else []
+        return [market.strip() for market in markets] if markets else []
     
     @staticmethod
     def parse_docx_file(file_path):
@@ -262,11 +261,11 @@ class DocxParser:
                             client.first_name = row_value
                         elif "Address" in row_label:
                             client.address = row_value
-                        elif "Date of Birth" in row_label:
+                        elif "date of birth" in row_label.lower():
                             client.birth_date = row_value
                         elif "Nationality" in row_label:
                             client.nationality = row_value
-                        elif "Passport No/ Unique ID" in row_label:
+                        elif "passport no/ unique id" in row_label.lower():
                             client.passport_id = row_value
                         elif "ID Type" in row_label:
                             client.id_type = row_value
@@ -364,7 +363,7 @@ class DocxParser:
                             client.wealth_info.wealth_sources = DocxParser.extract_wealth_sources(row_label)
                             if row_value:
                                 client.wealth_info.source_info.append(row_value)
-                        print(f"Row label: {row_label}, Row value: {row_value}")
+                        # print(f"Row label: {row_label}, Row value: {row_value}")
                 
                 elif i == 13:  # Income info
                     for row in table.rows:
@@ -448,4 +447,4 @@ if __name__ == "__main__":
     # Example usage:
     # For single file
     json_data = parse_docx_to_json("profile.docx", "profile_output.json")
-    print(f"JSON data saved to profile_output.json")
+    # print("JSON data saved to profile_output.json")

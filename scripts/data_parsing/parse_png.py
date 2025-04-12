@@ -41,15 +41,15 @@ def process_image(image_path):
     
     results = reader.readtext(image_path)
     
-    print(f"Processing full image: {image_path}, image size: {image_np.shape}")
-    print("-" * 50)
+    # print(f"Processing full image: {image_path}, image size: {image_np.shape}")
+    # print("-" * 50)
     
-    for i, (bbox, text, prob) in enumerate(results):
-        print(f"Detection #{i+1}:")
-        print(f"  Bounding Box: {bbox}")
-        print(f"  Text: {text}")
-        print(f"  Confidence: {prob:.4f}")
-        print("-" * 50)
+    # for i, (bbox, text, prob) in enumerate(results):
+    #     print(f"Detection #{i+1}:")
+    #     print(f"  Bounding Box: {bbox}")
+    #     print(f"  Text: {text}")
+    #     print(f"  Confidence: {prob:.4f}")
+    #     print("-" * 50)
     
     return results
 
@@ -74,8 +74,8 @@ def process_image_regions(image_path, visualize=False, threshold=0.3):
     # Aggregate dictionary for extracted text (matching original keys)
     extracted_text = {}
     
-    print(f"Processing regions in image: {image_path} with size: {image_np.shape}")
-    print("-" * 50)
+    # print(f"Processing regions in image: {image_path} with size: {image_np.shape}")
+    # print("-" * 50)
     
     for region_name, bbox in FIELD_TO_EXTRACT.items():
         # Calculate the min/max coordinates to crop the image
@@ -90,7 +90,7 @@ def process_image_regions(image_path, visualize=False, threshold=0.3):
         
         # Skip empty regions
         if region_image.size == 0:
-            print(f"Region '{region_name}' is outside of image bounds or has zero size. Skipping.")
+            # print(f"Region '{region_name}' is outside of image bounds or has zero size. Skipping.")
             continue
             
         # Process the region
@@ -122,17 +122,17 @@ def process_image_regions(image_path, visualize=False, threshold=0.3):
         if len(filtered_text) > 0:
             extracted_text[region_name] = filtered_text if len(filtered_text) > 1 else filtered_text[0]
         
-        print(f"Region: {region_name}")
-        if not region_results:
-            print("  No text detected in this region")
-        for i, (_, text, prob) in enumerate(region_results):
-            if prob >= threshold:
-                print(f"  Detection #{i+1}:")
-                print(f"    Text: {text}")
-                print(f"    Confidence: {prob:.4f}")
-            else:
-                print(f"  Detection #{i+1}: (below threshold, confidence: {prob:.4f})")
-        print("-" * 50)
+        # print(f"Region: {region_name}")
+        # if not region_results:
+        #     print("  No text detected in this region")
+        # for i, (_, text, prob) in enumerate(region_results):
+        #     if prob >= threshold:
+        #         print(f"  Detection #{i+1}:")
+        #         print(f"    Text: {text}")
+        #         print(f"    Confidence: {prob:.4f}")
+        #     else:
+        #         print(f"  Detection #{i+1}: (below threshold, confidence: {prob:.4f})")
+        # print("-" * 50)
         
         # Draw bounding box for this region if visualization is enabled
         if visualize:
@@ -147,19 +147,19 @@ def process_image_regions(image_path, visualize=False, threshold=0.3):
     
     # Export the extracted text dictionary to a JSON file
     image_path_obj = Path(image_path)
-    json_output_path = image_path_obj.parent / f"{image_path_obj.stem}_extracted.json"
+    json_output_path = image_path_obj.parent / f"{image_path_obj.stem}.json"
     
     with open(json_output_path, 'w', encoding='utf-8') as json_file:
         json.dump(extracted_text, json_file, indent=4, ensure_ascii=False)
     
-    print(f"Extracted text saved to: {json_output_path}")
+    # print(f"Extracted text saved to: {json_output_path}")
     
     # Save the visualization image if requested
     if visualize:
         # Construct output filename in the same directory as the input
         output_path = image_path_obj.parent / f"{image_path_obj.stem}_annotated{image_path_obj.suffix}"
         cv2.imwrite(str(output_path), vis_image)
-        print(f"Annotated image saved to: {output_path}")
+        # print(f"Annotated image saved to: {output_path}")
     
     return results, extracted_text
 

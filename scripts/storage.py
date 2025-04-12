@@ -3,7 +3,7 @@ import json
 import gzip
 import boto3
 from botocore.exceptions import ClientError
-from typing import Union, BinaryIO, Optional
+from typing import Union, Optional
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,9 +13,9 @@ def get_s3_client():
     """Initialize and return an S3 client using environment variables for authentication."""
     try:
         s3_client = boto3.client(
-            's3',
-            aws_access_key_id=os.environ.get('S3_ACCESS'),
-            aws_secret_access_key=os.environ.get('S3_SECRET')
+            "s3",
+            aws_access_key_id=os.environ.get("S3_ACCESS"),
+            aws_secret_access_key=os.environ.get("S3_SECRET"),
         )
         return s3_client
     except Exception as e:
@@ -24,7 +24,7 @@ def get_s3_client():
 
 
 S3_CLIENT = get_s3_client()
-S3_BUCKET = os.environ.get('S3_BUCKET')
+S3_BUCKET = os.environ.get("S3_BUCKET")
 
 
 def store_object(data: Union[str, bytes], object_name: str) -> bool:
@@ -41,7 +41,7 @@ def store_object(data: Union[str, bytes], object_name: str) -> bool:
     try:
         # Convert string to bytes if needed
         if isinstance(data, str):
-            data = data.encode('utf-8')
+            data = data.encode("utf-8")
 
         S3_CLIENT.put_object(Body=data, Bucket=S3_BUCKET, Key=object_name)
         logger.info(f"Successfully uploaded data to {S3_BUCKET}/{object_name}")
@@ -63,7 +63,7 @@ def store_dict(data: dict, object_name: str) -> bool:
     """
     try:
         json_data = json.dumps(data)
-        compressed_data = gzip.compress(json_data.encode('utf-8'))
+        compressed_data = gzip.compress(json_data.encode("utf-8"))
         return store_object(compressed_data, object_name)
     except Exception as e:
         logger.error(f"Error uploading dictionary to S3: {e}")
@@ -82,7 +82,7 @@ def read_object(object_name: str) -> Optional[bytes]:
     """
     try:
         response = S3_CLIENT.get_object(Bucket=S3_BUCKET, Key=object_name)
-        data = response['Body'].read()
+        data = response["Body"].read()
         logger.info(f"Successfully read object {S3_BUCKET}/{object_name}")
         return data
     except ClientError as e:
@@ -104,14 +104,14 @@ def read_dict(object_name: str) -> Optional[dict]:
         compressed_data = read_object(object_name)
         if compressed_data:
             json_data = gzip.decompress(compressed_data)
-            return json.loads(json_data.decode('utf-8'))
+            return json.loads(json_data.decode("utf-8"))
         return None
     except Exception as e:
         logger.error(f"Error reading dictionary from S3: {e}")
         return None
 
 
-def list_objects(prefix: str = '') -> list:
+def list_objects(prefix: str = "") -> list:
     """
     List objects in an S3 bucket with optional prefix, handling pagination
     for more than 1000 objects.
@@ -124,17 +124,18 @@ def list_objects(prefix: str = '') -> list:
     """
     try:
         all_keys = []
-        paginator = S3_CLIENT.get_paginator('list_objects_v2')
+        paginator = S3_CLIENT.get_paginator("list_objects_v2")
         page_iterator = paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix)
 
         for page in page_iterator:
-            if 'Contents' in page:
-                all_keys.extend([obj['Key'] for obj in page['Contents']])
-                
+            if "Contents" in page:
+                all_keys.extend([obj["Key"] for obj in page["Contents"]])
+
         return all_keys
     except ClientError as e:
         logger.error(f"Error listing objects in S3: {e}")
         return []
+
 
 def check_object_exists(object_name: str) -> bool:
     """
@@ -151,6 +152,7 @@ def check_object_exists(object_name: str) -> bool:
         return True
     except ClientError:
         return False
+
 
 def delete_object(object_name: str) -> bool:
     """

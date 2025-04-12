@@ -1,7 +1,6 @@
 import os
 import random
-import glob
-from . import storage
+import storage
 
 
 FOLDER = f"{os.path.dirname(__file__)}/../train2/"

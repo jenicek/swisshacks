@@ -87,18 +87,11 @@ def save_text_file(text_data, filename_prefix, output_dir='decoded_files'):
     return output_path
 
 
-def process_json_file(json_file_path):
+def process_json_file(client_data, output_dir):
     """Process a JSON file containing encoded data fields"""
+        
     try:
-        # Read the JSON file
-        with open(json_file_path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        
-        output_dir = Path('decoded_files')
         output_dir.mkdir(exist_ok=True)
-        
-        # Extract client data if it exists
-        client_data = data.get('client_data', {})
         
         results = {}
         
