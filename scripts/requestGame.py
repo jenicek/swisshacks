@@ -1,12 +1,12 @@
 import requests
 import json
 import time
-from datetime import datetime
-import random
 from dotenv import load_dotenv
 import hashlib
 
-load_dotenv('/Users/kareen/works/swisshacks/.env')
+from model.rule_based_model import make_decision
+
+load_dotenv('C:\\Users\\jekatrinaj\\swisshacks\\.env')
 
 # import os
 from storage import store_dict
@@ -38,24 +38,6 @@ def start_game():
         print(f"Error starting game: {e}")
         return None
 
-def make_decision(client_data, score):
-    """
-    Determine whether to accept or reject a client based on their data and the current score.
-    """
-
-    #TODO: Analyze client_data
-    
-    if score == 9:
-        decision = "Reject"
-    elif score == 10:
-        decision = "Reject"
-    elif score >= 11:
-        decision = random.choice(["Accept", "Reject"])
-    else:
-        decision = "Accept"
-    
-    return 1 if decision == "Accept" else 0
-
 def send_decision(session_id, client_id, decision):
     """Send the decision (Accept or Reject) to the API and return the response"""
 
@@ -70,7 +52,6 @@ def send_decision(session_id, client_id, decision):
     }
 
     # Return also the decision (1 for Accept, 0 for Reject)
-
     try:
         response = requests.post(url, headers=HEADERS, json=payload)
         response.raise_for_status()

@@ -20,3 +20,6 @@ python-dotenv>=1.0.0
 easyocr>=1.7.0       # For OCR functionality
 Pillow>=10.0.0       # For image manipulation
 opencv-python>=4.8.0 # For image processing (required by easyocr)
+
+# AWS
+boto3=1.37.33
