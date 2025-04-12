@@ -149,7 +149,6 @@ def flag_nationality(client: ClientData):
             return True
     return False
 
-
 def flag_address(client: ClientData):
     address = client.client_profile[
         "address"
@@ -228,27 +227,8 @@ def flag_inconsistent_name(client: ClientData):
     account_name: str = remove_accents(client.account_form.get("name").lower())
 
     passport_last_name: str = remove_accents(client.passport.get("last_name").lower())
-    passport_first_name: str = remove_accents(client.passport.get("first_name").lower())
-    passport_middle_name = client.passport.get("middle_name")
-
-    ## null value safeguarding
-    if passport_middle_name is not None:
-        passport_given_name = remove_accents(
-            " ".join([passport_first_name, passport_middle_name]).lower().strip()
-        )
-        if profile_given_name != passport_given_name:
-            print(
-                f"Given name mismatch: {profile_given_name=} !=  {passport_given_name=}"
-            )
-            return True
-
-    else:
-        passport_given_name = remove_accents(passport_first_name.strip())
-        if profile_given_name[: len(passport_given_name)] != passport_given_name:
-            print(
-                f"Given name mismatch: {profile_given_name[:len(passport_given_name)]=} !=  {passport_given_name=}"
-            )
-            return True
+    passport_given_name: str = remove_accents(client.passport.get("given_name").lower())
+    
 
     # account.json data consistency
     if account_account_name != account_name:
@@ -272,6 +252,10 @@ def flag_inconsistent_name(client: ClientData):
 
     if profile_full_name != account_name:
         print(f"Full name mismatch: {profile_full_name=} != {account_name=}")
+        return True
+
+    if passport_given_name != account_holder_name:
+        print(f"Given name mismatch: {passport_given_name=} != {account_holder_name=}")
         return True
 
     if passport_last_name != profile_last_name:
