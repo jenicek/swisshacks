@@ -113,7 +113,8 @@ def read_dict(object_name: str) -> Optional[dict]:
 
 def list_objects(prefix: str = '') -> list:
     """
-    List objects in an S3 bucket with optional prefix.
+    List objects in an S3 bucket with optional prefix, handling pagination
+    for more than 1000 objects.
 
     Args:
         prefix: Object key prefix
@@ -122,11 +123,15 @@ def list_objects(prefix: str = '') -> list:
         List of object keys
     """
     try:
-        response = S3_CLIENT.list_objects_v2(Bucket=S3_BUCKET, Prefix=prefix)
+        all_keys = []
+        paginator = S3_CLIENT.get_paginator('list_objects_v2')
+        page_iterator = paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix)
 
-        if 'Contents' in response:
-            return [obj['Key'] for obj in response['Contents']]
-        return []
+        for page in page_iterator:
+            if 'Contents' in page:
+                all_keys.extend([obj['Key'] for obj in page['Contents']])
+                
+        return all_keys
     except ClientError as e:
         logger.error(f"Error listing objects in S3: {e}")
         return []
@@ -168,6 +173,6 @@ def delete_object(object_name: str) -> bool:
 
 if __name__ == "__main__":
     store_dict({"foo": "bar"}, "test/hello.txt")
-    data = read_dict("test/hello.txt")
-    if data:
-        print(data)
+    print(read_dict("test/hello.txt"))
+    delete_object("test/hello.txt")
+    assert "test/hello.txt" not in list_objects("")
