@@ -15,6 +15,7 @@ jupyter>=1.0.0
 python-multipart>=0.0.5  # For handling form data and file uploads
 tqdm>=4.64.0
 python-dotenv>=1.0.0
+pathlib>=1.0.1       # For path manipulation
 
 # Image processing and OCR
 easyocr>=1.7.0       # For OCR functionality
@@ -22,4 +23,7 @@ Pillow>=10.0.0       # For image manipulation
 opencv-python>=4.8.0 # For image processing (required by easyocr)
 
 # AWS
-boto3=1.37.33
+boto3>=1.37.33
+
+# Data format handling
+dataclasses-json>=0.6.1  # For JSON serialization/deserialization of dataclasses
