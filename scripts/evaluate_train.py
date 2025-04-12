@@ -16,7 +16,7 @@ from model.rule_based_model import SimpleModel
 
 
 def eval_on_trainset():
-    trainiter = trainset.TrainIterator(limit=100, maxkey=1000)
+    trainiter = trainset.TrainIterator(limit=100, minkey=2001)
     rule_based_model = SimpleModel()
 
     for path in trainiter:

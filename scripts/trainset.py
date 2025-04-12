@@ -11,10 +11,11 @@ random.seed(42)  # Set seed for reproducibility
 
 class TrainIterator:
 
-    def __init__(self, limit=None, maxkey=None):
+    def __init__(self, limit=None, minkey=None, maxkey=None):
         self.paths = [os.path.join(FOLDER, x, "0", y) \
                         for x in "01" for y in os.listdir(os.path.join(FOLDER, x, "0")) \
-                        if maxkey is None or int(y) < maxkey]
+                        if (maxkey is None or int(y) < maxkey)
+                        and (minkey is None or int(y) >= minkey)]
         random.shuffle(self.paths)
         self.current_index = 0
         self.predictions = []

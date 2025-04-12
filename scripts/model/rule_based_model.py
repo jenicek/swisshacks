@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 from typing import Tuple
 import unicodedata
+import textdistance
 from collections import defaultdict
 
 # Configure logging
@@ -58,14 +59,11 @@ class SimpleModel(Model):
         if flag_copy_paste(client):
             print("Copy-paste detected in the description")
             return 0
+        # if flag_risk_profile(client):
+        #     print("Risk profile mismatch")
+        #     return 0
         return 1
 
-
-def to_ascii(input_str):
-    # Normalize to NFKD form and encode to ASCII bytes, ignoring non-ASCII chars
-    normalized = unicodedata.normalize("NFKD", input_str)
-    ascii_bytes = normalized.encode("ASCII", "ignore")
-    return ascii_bytes.decode("ASCII")
 
 
 def flag_missing_values(client: ClientData):
@@ -173,17 +171,17 @@ def flag_address(client: ClientData):
                 postal_code = location_part
 
     # Log the parsed address for debugging
-    logger.info(
-        f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'"
-    )
+    # logger.info(
+    #     f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'"
+    # )
 
-    if to_ascii(street) != to_ascii(client.account_form["street_name"]):
+    if remove_accents(street) != remove_accents(client.account_form["street_name"]):
         return True
     if street_number != client.account_form["building_number"]:
         return True
     if postal_code != client.account_form["postal_code"]:
         return True
-    if to_ascii(city) != to_ascii(client.account_form["city"]):
+    if remove_accents(city) != remove_accents(client.account_form["city"]):
         return True
 
     return False
@@ -292,7 +290,7 @@ def simple_mrz(passport_data: dict) -> Tuple[str, str]:
         "%y%m%d"
     )
     line2 = f"{passport_data['passport_number'].upper()}{passport_data['country_code']}{birth_date}"
-    return [l1.upper() for l1 in line1], line2.upper()
+    return [remove_accents(l1.upper()) for l1 in line1], line2.upper()
 
 
 def flag_passport(client: ClientData):
@@ -309,9 +307,10 @@ def flag_passport(client: ClientData):
     mrz_line1, mrz_line2 = simple_mrz(client.passport)
 
     passport_line1, passport_line2 = client.passport["passport_mrz"]
-    passport_line1 = [s for s in passport_line1.split("<") if s]
+    passport_line1 = [remove_accents(s.upper()) for s in passport_line1.split("<") if s]
 
-    if mrz_line1 != passport_line1 or mrz_line2[:18] != passport_line2[:18]:
+    if textdistance.levenshtein(" ".join(mrz_line1), " ".join(passport_line1)) > 1 \
+            or textdistance.levenshtein(mrz_line2[:18], passport_line2[:18]) > 2:
         print(mrz_line1, passport_line1)
         print(mrz_line2[:18], passport_line2[:18])
         return True
@@ -326,14 +325,14 @@ def flag_birth_date(client: ClientData):
     # Check if birth dates match between client profile and passport
     if client.client_profile["birth_date"] != client.passport["birth_date"]:
         return True
-    
+
     try:
         today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
         birth_date = datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date()
-        
+
         # Calculate age
         age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-        
+
         # Check if age is reasonable (typically 18-120 years for banking clients)
         if age < 18:
             logger.info(f"Client is too young: {age} years old")
@@ -345,7 +344,7 @@ def flag_birth_date(client: ClientData):
         # If there's an issue parsing the date
         logger.error(f"Invalid birth date format: {client.client_profile['birth_date']}")
         return True
-    
+
     return False
 
 def find_redundant_sentences(data_dict):

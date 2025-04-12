@@ -29,3 +29,4 @@ boto3>=1.37.33
 dataclasses-json>=0.6.1  # For JSON serialization/deserialization of dataclasses
 
 openai
+textdistance
