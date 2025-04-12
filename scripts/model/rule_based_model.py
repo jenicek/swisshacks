@@ -5,6 +5,7 @@ import logging
 from datetime import datetime
 from typing import Tuple
 import unicodedata
+from collections import defaultdict
 
 # Configure logging
 logging.basicConfig(
@@ -48,11 +49,14 @@ class SimpleModel(Model):
         if flag_passport(client):
             print("Passport mismatch")
             return 0
-        # if flag_address(client):
-        #     print("Address mismatch")
-        #     return 0
-        if flag_risk_profile(client):
-            print("Risk profile mismatch")
+        if flag_address(client):
+            print("Address mismatch")
+            return 0
+        if flag_birth_date(client):
+            print("Birth date mismatch")
+            return 0
+        if flag_copy_paste(client):
+            print("Copy-paste detected in the description")
             return 0
         return 1
 
@@ -318,11 +322,64 @@ def flag_passport(client: ClientData):
     return False
 
 
-def flag_risk_profile(client: ClientData):
-    if client.client_profile["account_details"]["risk_profile"] == "High":
+def flag_birth_date(client: ClientData):
+    # Check if birth dates match between client profile and passport
+    if client.client_profile["birth_date"] != client.passport["birth_date"]:
         return True
+    
+    try:
+        today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
+        birth_date = datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date()
+        
+        # Calculate age
+        age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        
+        # Check if age is reasonable (typically 18-120 years for banking clients)
+        if age < 18:
+            logger.info(f"Client is too young: {age} years old")
+            return True
+        if age > 120:
+            logger.info(f"Client age is unrealistic: {age} years old")
+            return True
+    except ValueError:
+        # If there's an issue parsing the date
+        logger.error(f"Invalid birth date format: {client.client_profile['birth_date']}")
+        return True
+    
     return False
 
+def find_redundant_sentences(data_dict):
+    sentence_map = defaultdict(set)
+
+    # Helper: normalize a sentence
+    def clean_sentence(sentence):
+        return re.sub(r'\s+', ' ', sentence.strip()).rstrip('.')
+
+    # Step 1: Split and map sentences to fields
+    for field, content in data_dict.items():
+        sentences = re.split(r'(?<=[.!?])\s+', content)
+        for raw_sentence in sentences:
+            sentence = clean_sentence(raw_sentence)
+            if sentence:
+                sentence_map[sentence].add(field)
+
+    # Step 2: Find duplicates (appearing in >1 field)
+    redundant_sentences = {
+        sentence: fields
+        for sentence, fields in sentence_map.items()
+        if len(fields) > 1
+    }
+
+    return redundant_sentences
+
+def flag_copy_paste(client: ClientData):
+    info = client.client_description
+    redundant_sentences = find_redundant_sentences(info)
+    if not redundant_sentences:
+        return False
+    for sentence, _ in redundant_sentences.items():
+        if len(sentence) > 120:
+            return True
 
 # def flat_date_consistencies(client: ClientData):
 
@@ -415,11 +472,12 @@ def flag_risk_profile(client: ClientData):
 
 
 # def flag_wealth(client: ClientData):
-#     real_state_value = client.client_profile["aum"]["real_estate_value"]
-#     if (
-#         sum([x["property value"] for x in client.client_profile["real_estate_details"]])
-#         != real_state_value
-#     ):
-#         return True
 
-#     return False
+
+# TODO: transfer assers < total_assets
+# TODO: check correct dates (i.e., work since <today, graduation_year < today)
+# TODO: Check valid passport range
+# TODO: Check passport dates are reasonable; (not too far in the past, not too far in the future)
+# TODO: Check valid passport
+# TODO: Take a list of country codes, country names and check we have correct stuff in passport
+
