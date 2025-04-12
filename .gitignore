@@ -79,3 +79,6 @@ terraform.rc
 .terraform.lock.hcl
 crash.log
 crash.*.log
+
+# API Responses
+api_responses/
