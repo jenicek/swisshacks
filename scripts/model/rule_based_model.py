@@ -4,6 +4,7 @@ import re
 import logging
 from datetime import datetime
 from typing import Tuple
+import unicodedata
 
 # Configure logging
 logging.basicConfig(
@@ -12,6 +13,14 @@ logging.basicConfig(
     handlers=[logging.FileHandler("validation_debug.log"), logging.StreamHandler()],
 )
 logger = logging.getLogger("validation")
+
+
+def remove_accents(text):
+    # Normalize to NFKD form (decomposes characters)
+    nfkd_form = unicodedata.normalize('NFKD', text)
+    # Filter out diacritical marks
+    only_ascii = ''.join([c for c in nfkd_form if not unicodedata.combining(c)])
+    return only_ascii
 
 
 class Model(ABC):
@@ -34,11 +43,12 @@ class SimpleModel(Model):
         if flag_country(client):
             print("Country mismatch")
             return 0
+        if flag_inconsistent_name(client):
+            return 0
         # if flag_address(client):
         #     print("Address mismatch")
         #     return 0
         return 1
-
 
 
 def flag_missing_values(client: ClientData):
@@ -180,4 +190,61 @@ def flag_country(client: ClientData):
 #     if not re.match('\w\w\d{7}', client.passport["passport_number"]):
 #         return True
 
-#     return False
+#     return Falsedef flag_inconsistent_name(client:ClientData):
+    """
+    Check if the name in the client profile and passport are inconsistent.
+    """
+    
+    profile_last_name:str = remove_accents(client.client_profile.get("last_name").lower())
+    profile_given_name:str = remove_accents(client.client_profile.get("first_name").lower())    
+    profile_full_name:str = remove_accents(" ".join([profile_given_name, profile_last_name]).lower().strip())
+    
+    account_account_name:str = remove_accents(client.account_form.get("account_name").lower())
+    account_holder_name:str = remove_accents(client.account_form.get("account_holder_name").lower())
+    account_holder_surname:str = remove_accents(client.account_form.get("account_holder_surname").lower())
+    account_name:str = remove_accents(client.account_form.get("name").lower())
+    
+    passport_last_name:str = remove_accents(client.passport.get("last_name").lower())
+    passport_first_name:str = remove_accents(client.passport.get("first_name").lower())
+    passport_middle_name = client.passport.get("middle_name")
+
+    
+    ## null value safeguarding
+    if passport_middle_name is not None:
+        passport_given_name = remove_accents(" ".join([passport_first_name, passport_middle_name]).lower().strip())
+        if profile_given_name != passport_given_name:
+            print(f"Given name mismatch: {profile_given_name=} !=  {passport_given_name=}")
+            return True
+           
+    else:
+        passport_given_name  = remove_accents(passport_first_name.strip())
+        if profile_given_name[:len(passport_given_name)] != passport_given_name:
+            print(f"Given name mismatch: {profile_given_name[:len(passport_given_name)]=} !=  {passport_given_name=}")
+            return True
+
+    
+    # account.json data consistency
+    if account_account_name != account_name:
+        print(f"Account name mismatch: {account_account_name=} != {account_name=}")
+        return True
+
+    if account_account_name != (account_holder_name + " " + account_holder_surname).strip():
+        print(f"Account name mismatch: {account_account_name=} != {account_holder_name} {account_holder_surname}")
+        return True
+
+    # cross value consistency
+    
+    if profile_last_name != passport_last_name:
+        print(f"Last name mismatch: {profile_last_name=} != {passport_last_name=}")
+        return True
+    
+
+    if profile_full_name != account_name:
+        print(f"Full name mismatch: {profile_full_name=} != {account_name=}")
+        return True
+
+    if passport_last_name != profile_last_name:
+        print(f"Full name mismatch: {passport_last_name=} != {profile_last_name=}")
+        return True
+
+    return False
