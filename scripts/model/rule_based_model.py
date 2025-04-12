@@ -190,7 +190,8 @@ def flag_country(client: ClientData):
 #     if not re.match('\w\w\d{7}', client.passport["passport_number"]):
 #         return True
 
-#     return Falsedef flag_inconsistent_name(client:ClientData):
+#     return False
+def flag_inconsistent_name(client:ClientData):
     """
     Check if the name in the client profile and passport are inconsistent.
     """
