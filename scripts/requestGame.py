@@ -158,7 +158,7 @@ def run_game():
         save_form_data_as_json(form_data, output_dir / "account.json")
 
         # Parse the DOCX file and save as JSON
-        parse_docx_to_json(output_dir / "profile.docx", output_dir / "profile.json")
+        profile_data = parse_docx_to_json(output_dir / "profile.docx", output_dir / "profile.json")
 
         # Parse the TXT file and save as JSON
         parsed_txt = parse_text_to_json(output_dir / "description.txt")
@@ -166,10 +166,10 @@ def run_game():
 
         client_file = ClientData(
             client_file=str(output_dir),
-            account_form=json.load(open(output_dir / "account.json")),
+            account_form=form_data,
             client_description=parsed_txt,
-            client_profile=json.load(open(output_dir / "profile.json")),
-            passport=json.load(open(output_dir / "passport.json")),
+            client_profile=json.loads(profile_data),
+            passport=parsed_png,
             label=0)
         
         decision = predictor.predict(client_file)

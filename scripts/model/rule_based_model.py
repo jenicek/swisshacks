@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from client_data.client_data import ClientData
 import re
 import logging
+from datetime import datetime
+from typing import Tuple
 
 # Configure logging
 logging.basicConfig(
@@ -21,11 +23,20 @@ class Model(ABC):
 class SimpleModel(Model):
     def predict(self, client: ClientData) -> int:
         if flag_missing_values(client):
+            print("Missing values")
             return 0
         if flag_verify_email(client):
+            print("Email mismatch")
             return 0
         if flag_phone(client):
+            print("Phone number mismatch")
             return 0
+        if flag_country(client):
+            print("Country mismatch")
+            return 0
+        # if flag_address(client):
+        #     print("Address mismatch")
+        #     return 0
         return 1
 
 
@@ -77,3 +88,96 @@ def flag_phone(client: ClientData):
 
     return False
 
+
+def flag_country(client: ClientData):
+    if client.account_form["country"] != client.client_profile["country_of_domicile"]:
+        return True
+    return False
+
+
+# def flag_address(client: ClientData):
+#     address = client.client_profile["address"] # i.e., "Place de la Concorde 17, 26627 Toulon"
+#     street, street_number, postal_code, city = "", "", "", ""
+#     if address:
+#         address_parts = address.split(",")
+#         if len(address_parts) >= 2:
+#             # First part contains street name and number: "Place de la Concorde 17"
+#             street_part = address_parts[0].strip()
+#             # Find the last word which should be the street number
+#             words = street_part.split()
+#             if words and words[-1].isdigit():
+#                 street_number = words[-1]
+#                 street = " ".join(words[:-1])
+#             else:
+#                 # If no number is found at the end, assume entire string is street name
+#                 street = street_part
+            
+#             # Second part contains postal code and city: "26627 Toulon"
+#             location_part = address_parts[1].strip()
+#             location_words = location_part.split()
+#             if location_words:
+#                 if location_words[0].isdigit():
+#                     postal_code = location_words[0]
+#                     city = " ".join(location_words[1:])
+#                 else:
+#                     # If no postal code is found, assume entire string is city
+#                     city = location_part
+
+
+#     # Log the parsed address for debugging
+#     logger.info(f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'")
+
+#     if street != client.account_form["street_name"]:
+#         return True
+#     if street_number != client.account_form["building_number"]:
+#         return True
+#     if postal_code != client.account_form["postal_code"]:
+#         return True
+#     if city != client.account_form["city"]:
+#         return True
+
+#     return False
+
+# def simple_mrz(passport_data: dict) -> Tuple[str, str]:
+
+#     given_names = (
+#         f"{passport_data['first_name']}<{passport_data['middle_name'].upper()}"
+#     )
+#     if passport_data["middle_name"] == "":
+#         given_names = passport_data["first_name"]
+
+#     line1 = f"P<{passport_data['country_code']}{passport_data['last_name'].upper()}<<{given_names}".ljust(
+#         45, "<"
+#     )
+
+#     birth_date = datetime.strptime(passport_data["birth_date"], "%Y-%m-%d").strftime(
+#         "%y%m%d"
+#     )
+#     line2 = f"{passport_data['passport_number'].upper()}{passport_data['country_code']}{birth_date}".ljust(
+#         45, "<"
+#     )
+
+#     return line1.upper(), line2.upper()
+
+# def flag_passport(client: ClientData):
+#     if not (
+#         client.client_profile["passport_number"]
+#         == client.account_form["passport_number"]
+#         == client.passport["passport_number"]
+#     ):
+#         return True
+
+#     if len(client.passport["passport_mrz"]) != 2:
+#         return True
+
+#     mrz_line1, mrz_line2 = simple_mrz(client.passport)
+
+#     passport_line1, passport_line2 = client.passport["passport_mrz"]
+
+#     if mrz_line1 != passport_line1 or mrz_line2 != passport_line2:
+#         return True
+
+#     if not re.match('\w\w\d{7}', client.passport["passport_number"]):
+#         return True
+
+#     return False
