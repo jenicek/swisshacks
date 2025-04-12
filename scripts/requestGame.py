@@ -1,7 +1,6 @@
 import requests
 import json
 import time
-import os
 from dotenv import load_dotenv
 import hashlib
 from pathlib import Path
