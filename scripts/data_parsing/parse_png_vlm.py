@@ -42,8 +42,7 @@ def parse_png_to_json(passport_png_path: str) -> dict:
         print(f"Error parsing JSON from OpenAI response: {e}")
         # Return empty dict with structure matching expected schema
         return {
-            "first_name": "",
-            "middle_name": "",
+            "given_name": "",
             "last_name": "",
             "gender": "",
             "country": "",
@@ -72,8 +71,7 @@ def parse_png(image_data: bytes) -> dict:
 
     # Define expected JSON schema for passport data
     passport_json_schema = """{
-    "first_name": "string",
-    "middle_name": "string or null",
+    "given_name": "string",
     "last_name": "string",
     "gender": "string",
     "country": "string",
