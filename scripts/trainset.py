@@ -11,7 +11,7 @@ random.seed(42)  # Set seed for reproducibility
 
 class TrainIterator:
 
-    def __init__(self):
+    def __init__(self, limit=None):
         self.paths = [os.path.join(FOLDER, x, "0", y) \
                         for x in "01" for y in os.listdir(os.path.join(FOLDER, x, "0"))]
         random.shuffle(self.paths)
@@ -20,6 +20,8 @@ class TrainIterator:
         self.accuracy = None
         self.false_negatives = []
         self.false_positives = []
+        if limit is not None:
+            self.paths = self.paths[:limit]
 
     def __iter__(self):
         if self.accuracy is not None:
@@ -32,9 +34,7 @@ class TrainIterator:
             self.current_index += 1
             return item
         else:
-            self.accuracy, self.false_positives, self.false_negatives = \
-                evaluate_predictions(self.paths, self.predictions)
-            print(f"Accuracy is {round(100*self.accuracy, 1):.1f}%")
+            print(self)
             raise StopIteration
 
     def predict(self, prediction: bool):
@@ -47,6 +47,11 @@ class TrainIterator:
         if len(self.predictions) >= self.current_index:
             raise ValueError("Prediction already stored.")
         self.predictions.append(prediction)
+
+    def __str__(self):
+        self.accuracy, self.false_positives, self.false_negatives = \
+            evaluate_predictions(self.paths[:len(self.predictions)], self.predictions)
+        return f"Accuracy is {round(100*self.accuracy, 1):.1f}%"
 
 
 def load_files(directory: str) -> dict:
@@ -71,7 +76,7 @@ def evaluate_predictions(paths: list[str], predictions: list[bool]) -> tuple[flo
             - List of false negative paths.
     """
     if len(paths) != len(predictions):
-        raise ValueError("Groundtruth and predictions must have the same length.")
+        raise ValueError(f"Groundtruth and predictions must have the same length: {len(paths)} vs {len(predictions)}")
 
     false_negatives = []
     false_positives = []
@@ -151,11 +156,12 @@ def download_dataset(prefix="train/"):
 if __name__ == "__main__":
     # Download dataset only once
     # upload_dataset()
-    download_dataset()
+    # download_dataset()
 
     # Example usage of TrainIterator
     train_iterator = TrainIterator()
     for path in train_iterator:
+        print(path)
         # Simulate prediction is True
         train_iterator.predict(True)
     print(train_iterator.false_negatives[:10])

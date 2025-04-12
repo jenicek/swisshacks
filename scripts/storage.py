@@ -26,6 +26,8 @@ def get_s3_client():
 S3_CLIENT = get_s3_client()
 S3_BUCKET = os.environ.get("S3_BUCKET")
 
+assert S3_BUCKET, "S3_BUCKET environment variable is not set"
+
 
 def store_object(data: Union[str, bytes], object_name: str) -> bool:
     """

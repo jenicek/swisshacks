@@ -7,8 +7,11 @@ from pathlib import Path
 from typing import List, Dict, Any
 import base64
 from openai import AzureOpenAI
+from pprint import pprint
 
+import trainset
 from data_parsing.parse_docx import parse_docx_to_json
+from decode_game_files import process_json_file
 from data_parsing.parse_pdf_banking_form import (
     parse_banking_form,
     save_form_data_as_json,
@@ -39,7 +42,7 @@ api_key = "3L2W6niZ2aTcZWiobBG5d54g3M3xTvbbUWqLjuhajbyDYIpJ6xRGJQQJ99BDACYeBjFXJ
 #     """Base predictor class"""
 #     def predict(self, data, *args, **kwargs):
 #         return self._predict(data, *args, **kwargs)
-    
+
 #     def _predict(self, data, *args, **kwargs):
 #         raise NotImplementedError("Subclasses must implement this method")
 
@@ -62,7 +65,7 @@ api_key = "3L2W6niZ2aTcZWiobBG5d54g3M3xTvbbUWqLjuhajbyDYIpJ6xRGJQQJ99BDACYeBjFXJ
 #             - last line of your response should be a json {'reject': true/false}.
 #             - Most importanyl reject only if the document breaks one of these rules:
 #             - {rules}
-            
+
 #             HERE is the data: {data}
 #         """
 #         result = []
@@ -80,85 +83,91 @@ api_key = "3L2W6niZ2aTcZWiobBG5d54g3M3xTvbbUWqLjuhajbyDYIpJ6xRGJQQJ99BDACYeBjFXJ
 #                     {"role": "user", "content": PROMPT.format(rules=self.rules, data=json.dumps(client))}
 #                 ]
 #             )
-            
+
 #             # Extract the rejection decision
 #             response_content = response.choices[0].message.content
 #             print(f"Validation response: {response_content}")
-            
+
 #             # Check if the response contains the decision
 #             if "{'reject': true}" in response_content.lower():
 #                 result.append(0)  # Rejected
 #             else:
 #                 result.append(1)  # Accepted
-                
+
 #         return result
 
-def check_data_consistency(account_json_path: str, profile_json_path: str, description_json_path: str, passport_png_path: str, rules_path: str) -> Dict[str, Any]:
+def check_data_consistency(account_json_path: str, profile_json_path: str, description_json_path: str, passport_png_path: str, rules_path: str = None) -> Dict[str, Any]:
     """
     Check consistency across multiple data files for a client
-    
+
     Args:
         account_json_path: Path to account JSON file
         profile_json_path: Path to profile JSON file
         description_json_path: Path to passport JSON file
         passport_png_path: Path to passport PNG image
         rules_path: Path to rules file
-    
+
     Returns:
         Dict with consistency check results and reasoning
     """
     # Load JSON data
     with open(account_json_path, 'r') as f:
         account_data = json.load(f)
-    
+
     with open(profile_json_path, 'r') as f:
         profile_data = json.load(f)
 
     with open(description_json_path, 'r') as f:
         description_data = json.load(f)
-    
+
     # Encode PNG as base64 for the AI to analyze
     with open(passport_png_path, 'rb') as image_file:
         encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
-    
+
     # Create prompt for consistency check
     consistency_prompt = f"""
-    Analyze the provided client data for consistency across different documents.
-    
+    You are a relationship manager supposed to check client's data uploaded to a bank before an
+    account is opened. The client may upload documents with incorrect data, or fraudelent documents.
+    Some data may be missing.
+
     Account data: {json.dumps(account_data, indent=2)}
-    
+
     Profile data: {json.dumps(profile_data, indent=2)}
-    
+
     Description data: {json.dumps(description_data, indent=2)}
-    
+
     The passport image is also provided as base64. Please check if the data is consistent across all sources.
-    
+
     Check for:
-    1. Name consistency across all documents
-    2. Address consistency
+    1. Name must be the same across all documents
+    2. Address must be the same across all documents
     3. Passport number matching between passport data and account data
-    4. Any suspicious inconsistencies or missing critical information
-    5. Any signs of fraud or data manipulation
-    
+    4. Any signs of fraud or data manipulation
+    5. Future document issue dates
+
+    The following inconsistencies should be ignored:
+    1. Employment history
+    2. Net wealth
+    3. Middle name is optional
+
     Provide detailed reasoning about any inconsistencies found.
     Respond with a JSON structure that includes:
-    - "is_consistent": true/false
-    - "inconsistencies": [list of specific inconsistencies found]
+    - "is_valid": true/false
+    - "inconsistencies": [list of specific inconsistencies found, if any]
     - "reasoning": detailed explanation of your findings
     - "risk_level": "low", "medium", or "high"
-    - "only_small_inconsistencies": true/false (if the inconsistencies are minor and do not affect the decision-making process)
     """
-    
+
     # Create Azure OpenAI client for this specific check
     consistency_client = AzureOpenAI(
         api_key=api_key,
         api_version="2025-01-01-preview",
         azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
     )
-    
+
     # Make API call with image included
     consistency_response = consistency_client.chat.completions.create(
-        model="gpt-4o", 
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a financial fraud detection assistant that specializes in identifying inconsistencies in client documentation. Only identify inconsistencies that are critical to the decision-making process and missing critical information. Take a note that some of the fields can be separated into multiple keys in json formats (like address). Disregard missing account number and expected_transactional_behavior."},
             {"role": "user", "content": consistency_prompt},
@@ -169,10 +178,10 @@ def check_data_consistency(account_json_path: str, profile_json_path: str, descr
         ],
         temperature=0.1  # Lower temperature for more deterministic responses
     )
-    
+
     # Extract and parse the response
     response_content = consistency_response.choices[0].message.content
-    
+
     # Find and extract JSON from the response
     try:
         # Try to extract JSON from the response content
@@ -186,12 +195,12 @@ def check_data_consistency(account_json_path: str, profile_json_path: str, descr
     except json.JSONDecodeError:
         # If parsing fails, return a structured error
         result_json = {
-            "is_consistent": False,
+            "is_valid": False,
             "inconsistencies": ["Unable to parse AI response into structured format"],
             "reasoning": response_content,
             "risk_level": "medium"
         }
-    
+
     return result_json
 
 
@@ -294,9 +303,6 @@ def run_game():
     while True:  # Run indefinitely until game over
         print(f"\nChecking result for level {score} ...")
 
-        # Save data in reasonable formats
-        from decode_game_files import process_json_file
-
         # TODO: define what folder structure we use
         output_dir = data_dir / f"level_{score}"
         process_json_file(client_data, output_dir)
@@ -384,6 +390,36 @@ def run_game_continuously():
         time.sleep(3)  # Delay before starting a new game
 
 
+def eval_on_trainset():
+    train_iterator = trainset.TrainIterator(limit=10)
+    for path in train_iterator:
+        input_dir = Path(path)
+        output_dir = data_dir / f"train_{path.split('/')[-1]}"
+
+        # Parse the PDF banking form and save as JSON
+        form_data = parse_banking_form(input_dir / "account.pdf")
+        save_form_data_as_json(form_data, output_dir / "account.json")
+
+        # Parse the DOCX file and save as JSON
+        parse_docx_to_json(input_dir / "profile.docx", output_dir / "profile.json")
+
+        # Parse the TXT file and save as JSON
+        parsed_txt = parse_text_to_json(input_dir / "description.txt")
+        save_json_output(parsed_txt, output_dir / "description.json")
+
+        openai_response = check_data_consistency(
+            str(output_dir / "account.json"),
+            str(output_dir / "profile.json"),
+            str(output_dir / "description.json"),
+            str(input_dir / "passport.png"),
+        )
+
+        train_iterator.predict(openai_response["risk_level"] != "high")
+        print(train_iterator, input_dir)
+        pprint(openai_response)
+
+
 if __name__ == "__main__":
     run_game()
     # run_game_continuously()
+    # eval_on_trainset()
