@@ -1,23 +1,240 @@
 from openai import AzureOpenAI
+import json
+from pathlib import Path
+from typing import List, Dict, Any, Optional
+import base64
+import os
 
 # Store your API key in an environment variable for security (best practice)
 # For now, setting it directly in the script, but consider using environment variables
 api_key = "3L2W6niZ2aTcZWiobBG5d54g3M3xTvbbUWqLjuhajbyDYIpJ6xRGJQQJ99BDACYeBjFXJ3w3AAABACOGzqpD"
 
 # Create an Azure OpenAI client
-client = AzureOpenAI(
-    api_key=api_key,
-    api_version="2025-01-01-preview",  # GPT-4o is under this version
-    azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
-)
+# client = AzureOpenAI(
+#     api_key=api_key,
+#     api_version="2025-01-01-preview",  # GPT-4o is under this version
+#     azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
+# )
 
-# Make the API call
-response = client.chat.completions.create(
-    model="gpt-4o",  # Use the deployment name you chose
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Tell me a joke."}
-    ]
-)
+# # Make the API call
+# response = client.chat.completions.create(
+#     model="gpt-4o",  # Use the deployment name you chose
+#     messages=[
+#         {"role": "system", "content": "You are a helpful assistant."},
+#         {"role": "user", "content": "Tell me a joke."}
+#     ]
+# )
 
-print(response.choices[0].message.content)
+# print(response.choices[0].message.content)
+
+class Predictor:
+    """Base predictor class"""
+    def predict(self, data, *args, **kwargs):
+        return self._predict(data, *args, **kwargs)
+    
+    def _predict(self, data, *args, **kwargs):
+        raise NotImplementedError("Subclasses must implement this method")
+
+class OpenAIPredictor(Predictor):
+
+    def __init__(self, rulebook_path: str | Path):
+        super().__init__()
+
+        with open(rulebook_path, "r") as f:
+            self.rules = f.read()
+
+    def _predict(self, data: List[Dict[str, Any]], *args, **kwargs) -> List[int]:
+
+        PROMPT = """
+            HERE is a client data, that we would like to verify that has no inconsistencies.
+            We would like to reject the application if something does not add up, or misses a field.
+            - Compare fields across documents
+            - Check if the description of the client adds up with the numbers and backstories.
+            - You can reason for yourself shortly.
+            - last line of your response should be a json {'reject': true/false}.
+            - Most importanyl reject only if the document breaks one of these rules:
+            - {rules}
+            
+            HERE is the data: {data}
+        """
+        result = []
+        for client in data:
+            client_openai = AzureOpenAI(
+                api_key=api_key,
+                api_version="2025-01-01-preview",
+                azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
+            )
+
+            response = client_openai.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant focused on data validation."},
+                    {"role": "user", "content": PROMPT.format(rules=self.rules, data=json.dumps(client))}
+                ]
+            )
+            
+            # Extract the rejection decision
+            response_content = response.choices[0].message.content
+            print(f"Validation response: {response_content}")
+            
+            # Check if the response contains the decision
+            if "{'reject': true}" in response_content.lower():
+                result.append(0)  # Rejected
+            else:
+                result.append(1)  # Accepted
+                
+        return result
+
+def check_data_consistency(account_json_path: str, profile_json_path: str, description_json_path: str, passport_png_path: str, rules_path: str) -> Dict[str, Any]:
+    """
+    Check consistency across multiple data files for a client
+    
+    Args:
+        account_json_path: Path to account JSON file
+        profile_json_path: Path to profile JSON file
+        description_json_path: Path to passport JSON file
+        passport_png_path: Path to passport PNG image
+        rules_path: Path to rules file
+    
+    Returns:
+        Dict with consistency check results and reasoning
+    """
+    # Load JSON data
+    with open(account_json_path, 'r') as f:
+        account_data = json.load(f)
+    
+    with open(profile_json_path, 'r') as f:
+        profile_data = json.load(f)
+
+    with open(description_json_path, 'r') as f:
+        description_data = json.load(f)
+    
+    # Encode PNG as base64 for the AI to analyze
+    with open(passport_png_path, 'rb') as image_file:
+        encoded_image = base64.b64encode(image_file.read()).decode('utf-8')
+    
+    # Combine all data into a single structure for analysis
+    combined_data = {
+        "account": account_data,
+        "profile": profile_data,
+        "description": description_data,
+        "passport_image_base64": encoded_image
+    }
+    
+    # Create prompt for consistency check
+    consistency_prompt = f"""
+    Analyze the provided client data for consistency across different documents.
+    
+    Account data: {json.dumps(account_data, indent=2)}
+    
+    Profile data: {json.dumps(profile_data, indent=2)}
+    
+    Description data: {json.dumps(description_data, indent=2)}
+    
+    The passport image is also provided as base64. Please check if the data is consistent across all sources.
+    
+    Check for:
+    1. Name consistency across all documents
+    2. Address consistency
+    3. Passport number matching between passport data and account data
+    4. Any suspicious inconsistencies or missing critical information
+    5. Any signs of fraud or data manipulation
+    
+    Provide detailed reasoning about any inconsistencies found.
+    Respond with a JSON structure that includes:
+    - "is_consistent": true/false
+    - "inconsistencies": [list of specific inconsistencies found]
+    - "reasoning": detailed explanation of your findings
+    - "risk_level": "low", "medium", or "high"
+    - "only_small_inconsistencies": true/false (if the inconsistencies are minor and do not affect the decision-making process)
+    """
+    
+    # Create Azure OpenAI client for this specific check
+    consistency_client = AzureOpenAI(
+        api_key=api_key,
+        api_version="2025-01-01-preview",
+        azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
+    )
+    
+    # Make API call
+    consistency_response = consistency_client.chat.completions.create(
+        model="gpt-4o", 
+        messages=[
+            {"role": "system", "content": "You are a financial fraud detection assistant that specializes in identifying inconsistencies in client documentation. Only identify inconsistencies that are critical to the decision-making process and missing critical information. Take a note that some of the fields can be separated into multiple keys in json formats (like address). Disregard missing account number and expected_transactional_behavior."},
+            {"role": "user", "content": consistency_prompt}
+        ],
+        temperature=0.1  # Lower temperature for more deterministic responses
+    )
+    
+    # Extract and parse the response
+    response_content = consistency_response.choices[0].message.content
+    
+    # Find and extract JSON from the response
+    try:
+        # Try to extract JSON from the response content
+        import re
+        json_match = re.search(r'```json\n(.*?)\n```', response_content, re.DOTALL)
+        if json_match:
+            result_json = json.loads(json_match.group(1))
+        else:
+            # Try to parse the entire response as JSON
+            result_json = json.loads(response_content)
+    except json.JSONDecodeError:
+        # If parsing fails, return a structured error
+        result_json = {
+            "is_consistent": False,
+            "inconsistencies": ["Unable to parse AI response into structured format"],
+            "reasoning": response_content,
+            "risk_level": "medium"
+        }
+    
+    return result_json
+
+
+# Example usage
+if __name__ == "__main__":
+    
+    # Test data consistency function
+    print("\n--- Running Data Consistency Check ---")
+    
+    # Example paths - update these with your actual file paths
+    base_dir = Path("c:/Users/jekatrinaj/swisshacks/data/level_1")  # Using level_1 as example
+    account_json = base_dir / "account.json"
+    profile_json = base_dir / "profile.json"
+    description_json = base_dir / "description.json"
+    passport_png = base_dir / "passport.png"
+    
+    # Create a simple rules file if it doesn't exist
+    rules_path = Path("c:/Users/jekatrinaj/swisshacks/scripts/openai/validation_rules.txt")
+    if not rules_path.exists():
+        with open(rules_path, "w") as f:
+            f.write("""
+            1. Names must be consistent across all documents
+            2. Passport number must match between passport and account documents
+            3. Address information must be consistent
+            4. Critical fields must not be empty
+            5. Date formats must be valid
+            """)
+    
+    try:
+        # Run the consistency check
+        consistency_result = check_data_consistency(
+            str(account_json),
+            str(profile_json), 
+            str(description_json),
+            str(passport_png),
+            str(rules_path)
+        )
+        
+        print("\n--- Consistency Check Results ---")
+        print(json.dumps(consistency_result, indent=2))
+        
+        if not consistency_result.get("is_consistent", False):
+            print("\nWARNING: Inconsistencies detected in the client data!")
+            for i, inconsistency in enumerate(consistency_result.get("inconsistencies", [])):
+                print(f"{i+1}. {inconsistency}")
+        else:
+            print("\nAll data appears consistent.")
+            
+    except Exception as e:
+        print(f"Error during consistency check: {str(e)}")
