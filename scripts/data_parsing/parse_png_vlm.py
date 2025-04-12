@@ -24,6 +24,7 @@ def parse_png_to_json(passport_png_path: str) -> dict:
         image_data = image_file.read()
 
     passport_data = parse_png(image_data)
+    passport_data["version"] = "2.0"  # Add version to the passport data
 
     # Extract and parse the JSON response
     try:
@@ -54,6 +55,7 @@ def parse_png_to_json(passport_png_path: str) -> dict:
             "passport_issue_date": "",
             "passport_expiry_date": "",
             "signature": False,
+            "version": "2.0",
         }
 
 
@@ -83,6 +85,7 @@ def parse_png(image_data: bytes) -> dict:
     "passport_issue_date": "YYYY-MM-DD",
     "passport_expiry_date": "YYYY-MM-DD"
     "signature": "boolean"
+
     }"""
 
     response = client_openai.chat.completions.create(
