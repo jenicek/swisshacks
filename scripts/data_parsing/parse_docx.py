@@ -198,40 +198,16 @@ class DocxParser:
     
     @staticmethod
     def extract_assets(text):
-        """Extract assets from checkbox text and their EUR values"""
-        checked_assets = []
-        all_assets_with_values = {}
-        
-        lines = text.strip().split('\n')
-        
-        for line in lines:
-            # Skip empty lines
-            if not line.strip():
-                continue
-                
-            # Check if line starts with checkbox
-            if '☐' in line or '☒' in line:
-                is_checked = '☒' in line
-                
-                # Extract asset name and value
-                parts = line.split('EUR')
-                if len(parts) >= 2:
-                    # Extract asset name by removing checkbox and whitespace
-                    asset_name = parts[0].replace('☐', '').replace('☒', '').strip()
-                    
-                    # Extract EUR value
-                    eur_value_str = parts[1].strip().replace(',', '')
-                    try:
-                        eur_value = int(eur_value_str) if eur_value_str.isdigit() else 0
-                    except (ValueError, TypeError):
-                        eur_value = 0
-                    
-                    # Add to results
-                    all_assets_with_values[asset_name] = eur_value
-                    if is_checked:
-                        checked_assets.append(asset_name)
-        
-        return checked_assets, all_assets_with_values
+        """Extract assets from checkbox text"""
+        assets = {}
+        for line in text.splitlines():
+            if "☒" in line:
+                print(line)
+                line = line.replace("☒", "").strip()
+                if line:
+                    assets[line.split("EUR")[0].strip()] = line.split("EUR")[1].strip()
+        return assets
+
 
     @staticmethod
     def get_mandate_type(text):
