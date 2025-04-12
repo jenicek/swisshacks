@@ -24,7 +24,7 @@ class PersonalInfo:
 class EmploymentStatus:
     status_type: Optional[str] = None  # "Employee", "Not employed", "Retired"
     since: Optional[str] = None
-    
+
 @dataclass_json
 @dataclass
 class Employment:
@@ -35,7 +35,7 @@ class Employment:
     previous_profession: Optional[str] = None
     is_primary: bool = True
 
-    
+
 @dataclass_json
 @dataclass
 class WealthInfo:
@@ -57,7 +57,7 @@ class InvestmentPreferences:
     investment_experience: Optional[str] = None  # None, Limited, Good, Extensive
     investment_horizon: Optional[str] = None  # Short-term, Medium-term, Long-term
     expected_transactional_behavior: Optional[str] = None  # Low, Medium, High frequency
-    preferred_markets: List[str] = field(default_factory=list) 
+    preferred_markets: List[str] = field(default_factory=list)
 
 @dataclass_json
 @dataclass
@@ -90,14 +90,14 @@ class ClientProfile:
     wealth_info: WealthInfo = field(default_factory=WealthInfo)
     income_info: IncomeInfo = field(default_factory=IncomeInfo)
     account_details: AccountDetails = field(default_factory=AccountDetails)
-    
+
     # Metadata
     filename: Optional[str] = None
     parsed_date: str = field(default_factory=lambda: datetime.now().isoformat())
 
 class DocxParser:
     """Parser for client profile docx files"""
-    
+
     @staticmethod
     def extract_cell_value(row, column_index):
         """Extract cell text value safely"""
@@ -105,12 +105,12 @@ class DocxParser:
             return row.cells[column_index].text.strip() if column_index < len(row.cells) else ""
         except:
             return ""
-    
+
     @staticmethod
     def find_checkbox_value(text):
         """Determine if a checkbox is checked"""
         return "☒" in text
-    
+
     @staticmethod
     def get_marital_status(text):
         """Extract marital status from checkbox text"""
@@ -123,7 +123,7 @@ class DocxParser:
         elif "☒ Widowed" in text:
             return "Widowed"
         return None
-    
+
     @staticmethod
     def get_gender(text):
         """Extract marital status from checkbox text"""
@@ -132,7 +132,7 @@ class DocxParser:
         elif "☒ Male" in text:
             return "Male"
         return None
-    
+
     @staticmethod
     def get_wealth_range(text):
         """Extract wealth range from checkbox text"""
@@ -162,7 +162,7 @@ class DocxParser:
         elif "☒ > EUR 1m" in text:
             return "> EUR 1m"
         return None
-    
+
     @staticmethod
     def get_risk_profile(text):
         """Extract risk profile from checkbox text"""
@@ -195,7 +195,7 @@ class DocxParser:
         if "☒ Other" in text:
             sources.append("Other")
         return sources
-    
+
     @staticmethod
     def extract_assets(text):
         """Extract assets from checkbox text"""
@@ -229,7 +229,7 @@ class DocxParser:
         elif "☒ Expert" in text:
             return "Expert"
         return None
-    
+
     @staticmethod
     def get_investment_horizon(text):
         """Extract investment horizon from checkbox text"""
@@ -240,34 +240,34 @@ class DocxParser:
         elif "☒ Long-Term" in text:
             return "Long-Term"
         return None
-    
-        
+
+
     @staticmethod
     def extract_preferred_markets(text):
         """Extract preferred markets from checkbox text"""
         markets = text.split(",")
         return [market.strip() for market in markets] if markets else []
-    
+
     @staticmethod
     def parse_docx_file(file_path):
         """Parse a docx file and return a ClientProfile object"""
         client = ClientProfile(filename=os.path.basename(file_path))
         primary_employment = Employment()
-        
+
         try:
             doc = docx.Document(file_path)
-            
+
             # Parse tables
             for i, table in enumerate(doc.tables):
                 if i == 0:  # Skip the "Client Information" header table
                     continue
-                
+
                 # Identify tables by index based on the analysis
                 if i == 1:  # Basic information table
                     for row in table.rows:
                         row_label = DocxParser.extract_cell_value(row, 0)
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Last Name" in row_label:
                             client.last_name = row_value
                         elif "First/ Middle Name" in row_label:
@@ -290,8 +290,8 @@ class DocxParser:
                             client.gender = DocxParser.get_gender(row_value)
                         elif "country of domicile" in row_label.lower():
                             client.country_of_domicile = row_value
-                        
-                
+
+
                 elif i == 3:  # Contact info table
                     for row in table.rows:
                         row_value = DocxParser.extract_cell_value(row, 2)
@@ -299,28 +299,28 @@ class DocxParser:
                             client.contact_info.telephone = row_value.replace("Telephone", "").strip()
                         elif "E-Mail" in row_value:
                             client.contact_info.email = row_value.replace("E-Mail", "").strip()
-                
+
                 elif i == 5:  # PEP status table
                     row_value = DocxParser.extract_cell_value(table.rows[0], 2)
                     client.personal_info.is_politically_exposed = "☒ Yes" in row_value
-                
+
                 elif i == 6:  # Marital status and education
                     for row in table.rows:
                         row_label = DocxParser.extract_cell_value(row, 0)
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Marital Status" in row_label:
                             client.personal_info.marital_status = DocxParser.get_marital_status(row_value)
                         elif "Highest education" in row_label:
                             client.personal_info.highest_education = row_value
                         elif "Education History" in row_label:
                             client.personal_info.education_history = row_value
-                
+
                 elif i == 8:  # Employment info - first part
                     for row in table.rows:
                         row_label = DocxParser.extract_cell_value(row, 0)
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Current employment and function" in row_label:
                             if "Employee" in row_value:
                                 primary_employment.current_status.status_type = "Employee"
@@ -335,13 +335,13 @@ class DocxParser:
                                 primary_employment.position = parts[0].strip()
                                 if len(parts) > 1:
                                     primary_employment.annual_income = parts[1].replace(")", "").strip()
-                
+
                 elif i == 9:  # Employment status - second part
                     employment_status_found = False
-                    
+
                     for row in table.rows:
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Currently not employed" in row_value and DocxParser.find_checkbox_value(row_value):
                             employment_status_found = True
                             primary_employment.current_status.status_type = "Not employed"
@@ -349,10 +349,10 @@ class DocxParser:
                                 since_value = row_value.split("Since")[1].strip()
                                 if since_value:
                                     primary_employment.current_status.since = since_value
-                        
+
                         elif "Previous Profession" in row_value:
                             primary_employment.previous_profession = row_value.replace("Previous Profession:", "").strip()
-                        
+
                         elif "Retired" in row_value and DocxParser.find_checkbox_value(row_value):
                             employment_status_found = True
                             primary_employment.current_status.status_type = "Retired"
@@ -360,16 +360,16 @@ class DocxParser:
                                 since_value = row_value.split("Since")[1].strip()
                                 if since_value:
                                     primary_employment.current_status.since = since_value
-                    
+
                     # Add the parsed employment to client profile
                     if primary_employment.employer or primary_employment.position or primary_employment.current_status.status_type:
                         client.employment.append(primary_employment)
-                
+
                 elif i == 11:  # Wealth info
                     for row in table.rows:
                         row_label = DocxParser.extract_cell_value(row, 0)
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Total wealth estimated" in row_label:
                             client.wealth_info.total_wealth_range = DocxParser.get_wealth_range(row_value)
                         elif "Origin of wealth" in row_label:
@@ -379,23 +379,23 @@ class DocxParser:
                         elif "estimated assets" in row_label.lower():
                             client.wealth_info.assets = DocxParser.extract_assets(row_value)
                         # print(f"Row label: {row_label}, Row value: {row_value}")
-                
+
                 elif i == 13:  # Income info
                     for row in table.rows:
                         row_label = DocxParser.extract_cell_value(row, 0)
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Estimated Total income" in row_label:
                             client.income_info.total_income_range = DocxParser.get_income_range(row_value)
                         if "Country of main source of income" in row_label:
                             client.income_info.source_info = row_value
-                            
-                
+
+
                 elif i == 15:  # Account details and basic investment preferences
                     for row in table.rows:
                         row_label = DocxParser.extract_cell_value(row, 0)
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Account Number" in row_label:
                             client.account_details.account_number = row_value
                         elif "Commercial Account" in row_label:
@@ -412,12 +412,12 @@ class DocxParser:
                             client.account_details.investment_preferences.expected_transactional_behavior = row_value
                         elif "Preferred Markets" in row_label:
                             client.account_details.investment_preferences.preferred_markets = DocxParser.extract_preferred_markets(row_value)
-                
+
                 elif i == 17:  # Assets info
                     for row in table.rows:
                         row_label = DocxParser.extract_cell_value(row, 0)
                         row_value = DocxParser.extract_cell_value(row, 2)
-                        
+
                         if "Total Asset Under Management" in row_label:
                             try:
                                 client.account_details.total_assets = float(row_value.replace(",", ""))
@@ -431,30 +431,29 @@ class DocxParser:
 
         except Exception as e:
             print(f"Error parsing {file_path}: {e}")
-        
+
         return client
 
 def parse_docx_to_json(docx_file_path, output_json_path=None):
     """
     Parse a docx file to a ClientProfile object and optionally save as JSON
-    
+
     Args:
         docx_file_path: Path to the docx file
         output_json_path: Optional path to save JSON output, if None returns JSON string
-        
+
     Returns:
         JSON string if output_json_path is None, otherwise None
     """
     client_profile = DocxParser.parse_docx_file(docx_file_path)
-    
+
     # Convert to JSON
-    json_data = client_profile.to_json(indent=2, ensure_ascii=True)
-    
+    json_data = client_profile.to_json(indent=2, ensure_ascii=False)
+
     # Save to file if path provided
     if output_json_path:
         with open(output_json_path, 'w', encoding='utf-8') as f:
             f.write(json_data)
-    
     return json_data
 
 if __name__ == "__main__":

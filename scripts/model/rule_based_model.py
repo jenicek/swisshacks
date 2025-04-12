@@ -51,6 +51,13 @@ class SimpleModel(Model):
         return 1
 
 
+def to_ascii(input_str):
+    # Normalize to NFKD form and encode to ASCII bytes, ignoring non-ASCII chars
+    normalized = unicodedata.normalize('NFKD', input_str)
+    ascii_bytes = normalized.encode('ASCII', 'ignore')
+    return ascii_bytes.decode('ASCII')
+
+
 def flag_missing_values(client: ClientData):
 
     NULLABLE_FIELDS = ("middle_name", "other_ccy", "employer", "position", "annual_income", "previous_profession", "is_primary", "source_info", "account_number", "expected_transactional_behavior")
@@ -105,48 +112,47 @@ def flag_country(client: ClientData):
     return False
 
 
-# def flag_address(client: ClientData):
-#     address = client.client_profile["address"] # i.e., "Place de la Concorde 17, 26627 Toulon"
-#     street, street_number, postal_code, city = "", "", "", ""
-#     if address:
-#         address_parts = address.split(",")
-#         if len(address_parts) >= 2:
-#             # First part contains street name and number: "Place de la Concorde 17"
-#             street_part = address_parts[0].strip()
-#             # Find the last word which should be the street number
-#             words = street_part.split()
-#             if words and words[-1].isdigit():
-#                 street_number = words[-1]
-#                 street = " ".join(words[:-1])
-#             else:
-#                 # If no number is found at the end, assume entire string is street name
-#                 street = street_part
-            
-#             # Second part contains postal code and city: "26627 Toulon"
-#             location_part = address_parts[1].strip()
-#             location_words = location_part.split()
-#             if location_words:
-#                 if location_words[0].isdigit():
-#                     postal_code = location_words[0]
-#                     city = " ".join(location_words[1:])
-#                 else:
-#                     # If no postal code is found, assume entire string is city
-#                     city = location_part
+def flag_address(client: ClientData):
+    address = client.client_profile["address"] # i.e., "Place de la Concorde 17, 26627 Toulon"
+    street, street_number, postal_code, city = "", "", "", ""
+    if address:
+        address_parts = address.split(",")
+        if len(address_parts) >= 2:
+            # First part contains street name and number: "Place de la Concorde 17"
+            street_part = address_parts[0].strip()
+            # Find the last word which should be the street number
+            words = street_part.split()
+            if words and words[-1].isdigit():
+                street_number = words[-1]
+                street = " ".join(words[:-1])
+            else:
+                # If no number is found at the end, assume entire string is street name
+                street = street_part
 
+            # Second part contains postal code and city: "26627 Toulon"
+            location_part = address_parts[1].strip()
+            location_words = location_part.split()
+            nondigit_idxs = [i for i, x in enumerate(location_words) if not re.search(r"^[0-9-_/]+$", x)]
+            if location_words and nondigit_idxs:
+                first_nondigit = nondigit_idxs[0]
+                postal_code = " ".join(location_words[:first_nondigit])
+                city = " ".join(location_words[first_nondigit:])
+            else:
+                postal_code = location_part
 
-#     # Log the parsed address for debugging
-#     logger.info(f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'")
+    # Log the parsed address for debugging
+    logger.info(f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'")
 
-#     if street != client.account_form["street_name"]:
-#         return True
-#     if street_number != client.account_form["building_number"]:
-#         return True
-#     if postal_code != client.account_form["postal_code"]:
-#         return True
-#     if city != client.account_form["city"]:
-#         return True
+    if to_ascii(street) != to_ascii(client.account_form["street_name"]):
+        return True
+    if street_number != client.account_form["building_number"]:
+        return True
+    if postal_code != client.account_form["postal_code"]:
+        return True
+    if to_ascii(city) != to_ascii(client.account_form["city"]):
+        return True
 
-#     return False
+    return False
 
 # def simple_mrz(passport_data: dict) -> Tuple[str, str]:
 
@@ -195,35 +201,35 @@ def flag_inconsistent_name(client:ClientData):
     """
     Check if the name in the client profile and passport are inconsistent.
     """
-    
+
     profile_last_name:str = remove_accents(client.client_profile.get("last_name").lower())
-    profile_given_name:str = remove_accents(client.client_profile.get("first_name").lower())    
+    profile_given_name:str = remove_accents(client.client_profile.get("first_name").lower())
     profile_full_name:str = remove_accents(" ".join([profile_given_name, profile_last_name]).lower().strip())
-    
+
     account_account_name:str = remove_accents(client.account_form.get("account_name").lower())
     account_holder_name:str = remove_accents(client.account_form.get("account_holder_name").lower())
     account_holder_surname:str = remove_accents(client.account_form.get("account_holder_surname").lower())
     account_name:str = remove_accents(client.account_form.get("name").lower())
-    
+
     passport_last_name:str = remove_accents(client.passport.get("last_name").lower())
     passport_first_name:str = remove_accents(client.passport.get("first_name").lower())
     passport_middle_name = client.passport.get("middle_name")
 
-    
+
     ## null value safeguarding
     if passport_middle_name is not None:
         passport_given_name = remove_accents(" ".join([passport_first_name, passport_middle_name]).lower().strip())
         if profile_given_name != passport_given_name:
             print(f"Given name mismatch: {profile_given_name=} !=  {passport_given_name=}")
             return True
-           
+
     else:
         passport_given_name  = remove_accents(passport_first_name.strip())
         if profile_given_name[:len(passport_given_name)] != passport_given_name:
             print(f"Given name mismatch: {profile_given_name[:len(passport_given_name)]=} !=  {passport_given_name=}")
             return True
 
-    
+
     # account.json data consistency
     if account_account_name != account_name:
         print(f"Account name mismatch: {account_account_name=} != {account_name=}")
@@ -234,11 +240,11 @@ def flag_inconsistent_name(client:ClientData):
         return True
 
     # cross value consistency
-    
+
     if profile_last_name != passport_last_name:
         print(f"Last name mismatch: {profile_last_name=} != {passport_last_name=}")
         return True
-    
+
 
     if profile_full_name != account_name:
         print(f"Full name mismatch: {profile_full_name=} != {account_name=}")
