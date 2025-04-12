@@ -153,7 +153,6 @@ if __name__ == "__main__":
     # upload_dataset()
     download_dataset()
 
-    exit(1)
     # Example usage of TrainIterator
     train_iterator = TrainIterator()
     for path in train_iterator:

@@ -5,9 +5,6 @@ from typing import List, Dict, Any, Optional
 import base64
 import os
 
-# Store your API key in an environment variable for security (best practice)
-# For now, setting it directly in the script, but consider using environment variables
-api_key = "3L2W6niZ2aTcZWiobBG5d54g3M3xTvbbUWqLjuhajbyDYIpJ6xRGJQQJ99BDACYeBjFXJ3w3AAABACOGzqpD"
 
 # Create an Azure OpenAI client
 # client = AzureOpenAI(
@@ -60,15 +57,15 @@ class OpenAIPredictor(Predictor):
         result = []
         for client in data:
             client_openai = AzureOpenAI(
-                api_key=api_key,
+                api_key=os.getenv("AZURE_OPENAI_API_KEY"),
                 api_version="2025-01-01-preview",
-                azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
+                azure_endpoint= os.getenv("AZURE_OPENAI_ENDPOINT")
             )
 
             response = client_openai.chat.completions.create(
                 model="gpt-4o",
                 messages=[
-                    {"role": "system", "content": "You are a helpful assistant focused on data validation."},
+                    {"role": "system", "content": "You are a helpful, very meticulous and precise assistant focused on data input cross-validation."},
                     {"role": "user", "content": PROMPT.format(rules=self.rules, data=json.dumps(client))}
                 ]
             )
@@ -134,11 +131,13 @@ def check_data_consistency(account_json_path: str, profile_json_path: str, descr
     The passport image is also provided as base64. Please check if the data is consistent across all sources.
     
     Check for:
-    1. Name consistency across all documents
+    1. Name consistency across all documents. Ordering of given name and surname may vary and it is not considered an inconsistency.
     2. Address consistency
     3. Passport number matching between passport data and account data
     4. Any suspicious inconsistencies or missing critical information
     5. Any signs of fraud or data manipulation
+    6. Validate MRZ is of valid format and matches the passport number, holders name nationality and date of birth.
+    7. Check if signatures are consistent across documents.
     
     Provide detailed reasoning about any inconsistencies found.
     Respond with a JSON structure that includes:
@@ -151,9 +150,9 @@ def check_data_consistency(account_json_path: str, profile_json_path: str, descr
     
     # Create Azure OpenAI client for this specific check
     consistency_client = AzureOpenAI(
-        api_key=api_key,
+        api_key=os.environ.get("AZURE_OPENAI_API_KEY"),  # Ensure this is set in your environment
         api_version="2025-01-01-preview",
-        azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
+        azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT")  # Ensure this is set in your environment
     )
     
     # Make API call
