@@ -1,15 +1,15 @@
 import requests
 import json
 import time
-import uuid
 from datetime import datetime
 import random
 from dotenv import load_dotenv
+import hashlib
 
 load_dotenv('/Users/kareen/works/swisshacks/.env')
 
 # import os
-# from storage import store_dict
+from storage import store_dict
 # from storage import read_dict
 
 # API configuration
@@ -38,12 +38,13 @@ def start_game():
         print(f"Error starting game: {e}")
         return None
 
-def make_decision(session_id, client_id, score):
-    """Make a decision (Accept or Reject) based on the score and return the response"""
+def make_decision(client_data, score):
+    """
+    Determine whether to accept or reject a client based on their data and the current score.
+    """
 
-    url = f'{BASE_URL}/game/decision'
-
-    # Get the current client data to check level
+    #TODO: Analyze client_data
+    
     if score == 9:
         decision = "Reject"
     elif score == 10:
@@ -52,24 +53,28 @@ def make_decision(session_id, client_id, score):
         decision = random.choice(["Accept", "Reject"])
     else:
         decision = "Accept"
+    
+    return 1 if decision == "Accept" else 0
+
+def send_decision(session_id, client_id, decision):
+    """Send the decision (Accept or Reject) to the API and return the response"""
+
+    url = f'{BASE_URL}/game/decision'
+
+    picked_decision = "Accept" if decision == 1 else "Reject"
 
     payload = {
-        "decision": decision,
+        "decision": picked_decision,
         "client_id": client_id,
         "session_id": session_id
     }
 
     # Return also the decision (1 for Accept, 0 for Reject)
-    if decision == "Accept":
-        selected_decision = 1
-    else:
-        selected_decision = 0
 
     try:
         response = requests.post(url, headers=HEADERS, json=payload)
         response.raise_for_status()
         response_data = response.json()
-        response_data["decision"] = selected_decision
 
         return response_data
 
@@ -77,15 +82,30 @@ def make_decision(session_id, client_id, score):
         print(f"Error making decision: {e}")
         return None
 
+
+def toMd5(client_data: dict):
+    """Convert client data to MD5 hash"""
+    json_string = json.dumps(client_data, sort_keys=True)
+    # Compute the MD5 hash
+    md5_hash = hashlib.md5(json_string.encode('utf-8')).hexdigest()
+    return md5_hash
+
+
 def save_result(client_data, score, status, answer):
     """Save the result """
 
     result = "1" if status else "0"
 
-    print(f"\nlevel_{score}-answer_{answer}_result_{result}.json")
+    # Format the score as a two-digit string
+    formatted_score = str(score).zfill(2)
+
+    print(f"test/{result}/{formatted_score}/{toMd5(client_data)}")
+    store_dict(client_data, f"test/{result}/{formatted_score}/{toMd5(client_data)}")
+
+    # print(f"\nlevel_{formatted_score}-answer_{answer}_result_{result}.json")
 
 def run_game():
-    """Run the game with 55 queries per minute"""
+    """Main script"""
     game_data = start_game()
     
     if not game_data:
@@ -96,7 +116,8 @@ def run_game():
     
     session_id = game_data["session_id"]
     current_client_id = game_data["client_id"]
-    score = 1  # Starting score
+    client_data = game_data["client_data"]
+    score = 0  # Starting score
     
     # Calculate delay to achieve 55 requests per minute
     delay = 60 / 55  # seconds per request
@@ -108,27 +129,28 @@ def run_game():
     while True:  # Run indefinitely until game over
 
         print(f"\nChecking result for level {score} ...")
-        response = make_decision(session_id, current_client_id, score)
+        decision = make_decision(client_data, score)
+        response = send_decision(session_id, current_client_id, decision)
 
         queries_made += 1
         client_data = response.get("client_data", {})
-        level_answer = response.get("decision")
 
         # Check if game is over
         if response["status"] == "gameover":
             print(f"\nGame over! Final score: {score}")
             
             # Save the result
-            save_result(client_data, score, 0, level_answer)
+            save_result(client_data, score, 0, decision)
             break
 
         else:
             # Update client ID and score for next request immediately after receiving the response
             current_client_id = response["client_id"]
+            
             score = response["score"]
 
             # Save the result
-            save_result(client_data, score, 1, level_answer)
+            save_result(client_data, score, 1, decision)
             
         # Calculate time to sleep to maintain 55 requests per minute
         elapsed = time.time() - start_time
@@ -152,4 +174,5 @@ def run_game_continuously():
         time.sleep(3)  # Delay before starting a new game
 
 if __name__ == "__main__":
-    run_game_continuously()
+    run_game()
+    # run_game_continuously()
