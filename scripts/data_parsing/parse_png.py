@@ -122,8 +122,8 @@ def process_image_regions(image_path: Path, visualize=False, threshold=0.3):
     
             
             # Store adjusted results in the raw results dictionary
-            results[region_name] = filtered_text
-            
+            results[region_name] = filtered_text if len(filtered_text) > 1 else filtered_text[0]
+
             
             # print(f"Region: {region_name}")
             # if not region_results:
