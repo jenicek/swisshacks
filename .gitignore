@@ -84,3 +84,4 @@ crash.*.log
 api_responses/
 train2/
 train/
+data/
