@@ -8,6 +8,7 @@ from openai import AzureOpenAI
 api_key = os.environ.get("AZURE_OPENAI_API_KEY")
 api_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
 
+
 def parse_png_to_json(passport_png_path: str) -> dict:
     """
     Parse a passport image (PNG) to extract structured data using OpenAI vision API.
@@ -20,8 +21,49 @@ def parse_png_to_json(passport_png_path: str) -> dict:
     """
     # Encode PNG as base64 for the AI to analyze
     with open(passport_png_path, "rb") as image_file:
-        encoded_image = base64.b64encode(image_file.read()).decode("utf-8")
+        image_data = image_file.read()
 
+    passport_data = parse_png(image_data)
+
+    # Extract and parse the JSON response
+    try:
+        print(f"Extracted passport data: {passport_data}")
+        print(f"Successfully extracted passport data")
+
+        # Save the extracted data to file for debugging/reference
+        output_dir = Path(passport_png_path).parent
+        output_path = output_dir / "passport.json"
+        with open(output_path, "w") as f:
+            json.dump(passport_data, f, indent=2)
+
+        return passport_data
+
+    except json.JSONDecodeError as e:
+        print(f"Error parsing JSON from OpenAI response: {e}")
+        # Return empty dict with structure matching expected schema
+        return {
+            "first_name": "",
+            "middle_name": "",
+            "last_name": "",
+            "gender": "",
+            "country": "",
+            "country_code": "",
+            "nationality": "",
+            "birth_date": "",
+            "passport_number": "",
+            "passport_mrz": [],
+            "passport_issue_date": "",
+            "passport_expiry_date": "",
+            "signature": False,
+        }
+
+
+
+def parse_png(image_data: bytes) -> dict:
+    """
+    Parse a PNG image using OpenAI's vision API to extract structured data.
+    """
+    encoded_image = base64.b64encode(image_data).decode("utf-8")
     client_openai = AzureOpenAI(
         api_key=api_key,
         api_version="2025-01-01-preview",
@@ -36,7 +78,7 @@ def parse_png_to_json(passport_png_path: str) -> dict:
     "gender": "string",
     "country": "string",
     "country_code": "string",
-    "nationality": "string", 
+    "nationality": "string",
     "birth_date": "YYYY-MM-DD",
     "passport_number": "string",
     "passport_mrz": ["array", "of", "strings"],
@@ -72,34 +114,10 @@ def parse_png_to_json(passport_png_path: str) -> dict:
         response_format={"type": "json_object"},  # Ensure response is formatted as JSON
     )
 
-    # Extract and parse the JSON response
     try:
         passport_data = json.loads(response.choices[0].message.content)
-
-        # Save the extracted data to file for debugging/reference
-        output_dir = Path(passport_png_path).parent
-        output_path = output_dir / "passport.json"
-        with open(output_path, "w") as f:
-            json.dump(passport_data, f, indent=2)
-
-        return passport_data
-
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON from OpenAI response: {e}")
+    except json.JSONDecodeError:
         print(f"Raw response: {response.choices[0].message.content}")
-        # Return empty dict with structure matching expected schema
-        return {
-            "first_name": "",
-            "middle_name": "",
-            "last_name": "",
-            "gender": "",
-            "country": "",
-            "country_code": "",
-            "nationality": "",
-            "birth_date": "",
-            "passport_number": "",
-            "passport_mrz": [],
-            "passport_issue_date": "",
-            "passport_expiry_date": "",
-            "signature": False,
-        }
+        raise
+
+    return passport_data

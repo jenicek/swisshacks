@@ -10,6 +10,7 @@ import argparse
 from pathlib import Path
 from data_parsing.parse_pdf import extract_form_fields, extract_text_from_pdf
 import re
+from io import BytesIO
 
 
 def parse_banking_form(pdf_path: Path) -> dict:
@@ -24,32 +25,49 @@ def parse_banking_form(pdf_path: Path) -> dict:
     """
     # Read the PDF file
     with open(pdf_path, "rb") as file:
-        # Extract form fields with clean_output=True for simplified output
-        form_data = extract_form_fields(file, clean_output=True)
+        return parse_banking_pdf(file.read())
 
-        # If we couldn't detect a signature in the form fields, try text-based detection
-        if "_signature_fields" not in form_data:
-            # Reopen the file since we already read it
-            file.seek(0)
 
-            # Extract text from the PDF to look for signature sections
-            text = extract_text_from_pdf(file)
+def parse_banking_pdf(data: bytes):
+    """
+    Parse banking form PDF data and extract cleaned form fields.
 
-            # Look for common signature section indicators in the text
-            signature_patterns = [
-                r"(?i)specimen\s+signature",
-                r"(?i)signature\s+specimen",
-                r"(?i)signature\s+of\s+applicant",
-                r"(?i)customer\s+signature",
-                r"(?i)sign\s+here",
-            ]
+    Args:
+        data: PDF file content as bytes
 
-            for pattern in signature_patterns:
-                if re.search(pattern, text):
-                    form_data["_signature_fields"] = {"specimen_signature": True}
-                    break
+    Returns:
+        dict: Cleaned form field data
+    """
+    # Use BytesIO to create a file-like object from the bytes data
+    pdf_file = BytesIO(data)
+
+    # Extract form fields with clean_output=True for simplified output
+    form_data = extract_form_fields(pdf_file, clean_output=True)
+
+    # If we couldn't detect a signature in the form fields, try text-based detection
+    if "_signature_fields" not in form_data:
+        # Reset the file pointer to the beginning
+        pdf_file.seek(0)
+
+        # Extract text from the PDF to look for signature sections
+        text = extract_text_from_pdf(pdf_file)
+
+        # Look for common signature section indicators in the text
+        signature_patterns = [
+            r"(?i)specimen\s+signature",
+            r"(?i)signature\s+specimen",
+            r"(?i)signature\s+of\s+applicant",
+            r"(?i)customer\s+signature",
+            r"(?i)sign\s+here",
+        ]
+
+        for pattern in signature_patterns:
+            if re.search(pattern, text):
+                form_data["_signature_fields"] = {"specimen_signature": True}
+                break
 
     return form_data
+
 
 
 def save_form_data_as_json(form_data: dict, output_path: str = None) -> str:

@@ -11,9 +11,10 @@ random.seed(42)  # Set seed for reproducibility
 
 class TrainIterator:
 
-    def __init__(self, limit=None):
+    def __init__(self, limit=None, maxkey=None):
         self.paths = [os.path.join(FOLDER, x, "0", y) \
-                        for x in "01" for y in os.listdir(os.path.join(FOLDER, x, "0"))]
+                        for x in "01" for y in os.listdir(os.path.join(FOLDER, x, "0")) \
+                        if maxkey is None or int(y) < maxkey]
         random.shuffle(self.paths)
         self.current_index = 0
         self.predictions = []
@@ -156,7 +157,7 @@ def download_dataset(prefix="train/"):
 if __name__ == "__main__":
     # Download dataset only once
     # upload_dataset()
-    # download_dataset()
+    download_dataset()
 
     # Example usage of TrainIterator
     train_iterator = TrainIterator()
