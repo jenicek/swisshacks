@@ -66,7 +66,7 @@ def send_decision(session_id, client_id, decision):
     try:
         response = requests.post(url, headers=HEADERS, json=payload)
         response.raise_for_status()
-        response_data = response.json()
+        response_data = response.json()  # Converts the response to a dict object
 
         return response_data
 
@@ -160,27 +160,28 @@ def run_game():
         # Make decision based on client data
         decision = predictor.predict(client_file)
         response = send_decision(session_id, current_client_id, decision)
-
+    
         queries_made += 1
         client_data = response.get("client_data", {})
-
+        score = response["score"]
+        
         # Check if game is over
         if response["status"] == "gameover":
             print(f"\nGame over! Final score: {score}")
 
             # Save the result
-            save_result(client_data, score, 0, decision)
+            save_result(response, score+1, 0, decision)
             break
 
         else:
             # Update client ID and score for next request immediately after receiving the response
             current_client_id = response["client_id"]
-
+            
             score = response["score"]
 
             # Save the result
             save_result(client_data, score, 1, decision)
-
+            
         # Calculate time to sleep to maintain 55 requests per minute
         elapsed = time.time() - start_time
         expected_elapsed = queries_made * delay
