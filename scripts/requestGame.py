@@ -20,8 +20,7 @@ load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
 
 # API configuration
 BASE_URL = 'https://hackathon-api.mlo.sehlat.io'
-API_KEY = 'KR4iOS4v-zY57HPvT7U6HCrnN08ufEg5RT7Ye-bOU4Y'
-HEADERS = {"x-api-key": API_KEY}
+HEADERS = {"x-api-key": os.environ.get("JULIUS_BAER_API_KEY")}
 
 def start_game():
     """Start a new game session and return session details"""
