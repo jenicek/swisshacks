@@ -110,18 +110,5 @@ def process_json_file(client_data, output_dir):
         return results
     
     except Exception as e:
-        print(f"Error processing {json_file_path}: {e}")
+        print(f"Error processing {output_dir}: {e}")
         return None
-
-
-if __name__ == "__main__":
-    # Path to the JSON file
-    json_file_path = "game_response.json"
-    
-    # Process the file
-    decoded_files = process_json_file(json_file_path)
-    
-    if decoded_files:
-        print("\nDecoded Files Summary:")
-        for field_name, file_path in decoded_files.items():
-            print(f"  {field_name}: {file_path}")
