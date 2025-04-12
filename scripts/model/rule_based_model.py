@@ -45,8 +45,8 @@ class SimpleModel(Model):
         if flag_country(client):
             print("Country mismatch")
             return 0
-        # if flag_inconsistent_name(client):
-        #     return 0
+        if flag_inconsistent_name(client):
+            return 0
         if flag_passport(client):
             print("Passport mismatch")
             return 0
@@ -59,9 +59,8 @@ class SimpleModel(Model):
         if flag_copy_paste(client):
             print("Copy-paste detected in the description")
             return 0
-        # if flag_risk_profile(client):
-        #     print("Risk profile mismatch")
-        #     return 0
+        if flag_nationality(client):
+            return 0
         return 1
 
 
@@ -133,6 +132,21 @@ def flag_phone(client: ClientData):
 def flag_country(client: ClientData):
     if client.account_form["country"] != client.client_profile["country_of_domicile"]:
         return True
+    return False
+
+def flag_nationality(client: ClientData):
+    
+    passport_nationality = client.passport["nationality"].lower()
+    profile_nationality = client.client_profile["nationality"].lower()
+    
+    if len(passport_nationality) == len(profile_nationality):
+        if passport_nationality != profile_nationality:
+            print(f"Client nationality mismatch: {client.passport['nationality']} != {client.client_profile['nationality']}")
+            return True
+    else:
+        if profile_nationality not in passport_nationality:
+            print(f"Profile nationality {profile_nationality} does not match {passport_nationality  }")
+            return True
     return False
 
 
