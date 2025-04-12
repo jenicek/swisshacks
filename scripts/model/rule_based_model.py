@@ -44,8 +44,8 @@ class SimpleModel(Model):
         if flag_country(client):
             print("Country mismatch")
             return 0
-        # if flag_inconsistent_name(client):
-        #     return 0
+        if flag_inconsistent_name(client):
+            return 0
         if flag_passport(client):
             print("Passport mismatch")
             return 0
@@ -58,6 +58,9 @@ class SimpleModel(Model):
         if flag_copy_paste(client):
             print("Copy-paste detected in the description")
             return 0
+        # if flag_wealth(client):
+        #     print("Wealth inconsistency detected")
+        #     return 0
         return 1
 
 
@@ -216,27 +219,7 @@ def flag_inconsistent_name(client: ClientData):
     account_name: str = remove_accents(client.account_form.get("name").lower())
 
     passport_last_name: str = remove_accents(client.passport.get("last_name").lower())
-    passport_first_name: str = remove_accents(client.passport.get("first_name").lower())
-    passport_middle_name = client.passport.get("middle_name")
-
-    ## null value safeguarding
-    if passport_middle_name is not None:
-        passport_given_name = remove_accents(
-            " ".join([passport_first_name, passport_middle_name]).lower().strip()
-        )
-        if profile_given_name != passport_given_name:
-            print(
-                f"Given name mismatch: {profile_given_name=} !=  {passport_given_name=}"
-            )
-            return True
-
-    else:
-        passport_given_name = remove_accents(passport_first_name.strip())
-        if profile_given_name[: len(passport_given_name)] != passport_given_name:
-            print(
-                f"Given name mismatch: {profile_given_name[:len(passport_given_name)]=} !=  {passport_given_name=}"
-            )
-            return True
+    passport_given_name: str = remove_accents(client.passport.get("given_name").lower())
 
     # account.json data consistency
     if account_account_name != account_name:
@@ -253,6 +236,9 @@ def flag_inconsistent_name(client: ClientData):
         return True
 
     # cross value consistency
+    if passport_given_name != account_holder_name:
+        print(f"Given name mismatch: {passport_given_name=} != {account_holder_name=}")
+        return True
 
     if profile_last_name != passport_last_name:
         print(f"Last name mismatch: {profile_last_name=} != {passport_last_name=}")
@@ -471,10 +457,45 @@ def flag_copy_paste(client: ClientData):
 #     return False
 
 
-# def flag_wealth(client: ClientData):
+def flag_wealth(client: ClientData):
+    total_assets = client.client_profile["account_details"]["total_assets"]
+    transfer_assets = client.client_profile["account_details"]["transfer_assets"]
+
+    if total_assets < 0 or transfer_assets < 0:
+        return True
+    if transfer_assets > total_assets:
+        return True
+    
+    combined_assets = 0
+    for _, value in client.client_profile["wealth_info"]["assets"].items():
+        value = int(value)
+        if value < 0:
+            return True
+        combined_assets += value
+
+    if combined_assets > total_assets:
+        return True
+    
+    total_wealth_range = client.client_profile["wealth_info"]["total_wealth_range"]
+    # "< EUR 1.5m", "EUR 1.5m-5m", "EUR 5m-10m", "EUR 10m.-20m", "EUR 20m.-50m", "> EUR 50m"
+
+    # Check if the total assets fall within the specified range
+    if total_wealth_range == "< EUR 1.5m":
+        return not (combined_assets < 1_500_000)
+    elif total_wealth_range == "EUR 1.5m-5m":
+        return not (1_500_000 <= combined_assets < 5_000_000)
+    elif total_wealth_range == "EUR 5m-10m":
+        return not (5_000_000 <= combined_assets < 10_000_000)
+    elif total_wealth_range == "EUR 10m.-20m":
+        return not (10_000_000 <= combined_assets < 20_000_000)
+    elif total_wealth_range == "EUR 20m.-50m":
+        return not (20_000_000 <= combined_assets < 50_000_000)
+    elif total_wealth_range == "> EUR 50m":
+        return not (combined_assets > 50_000_000)
+
+    return False
 
 
-# TODO: transfer assers < total_assets
 # TODO: check correct dates (i.e., work since <today, graduation_year < today)
 # TODO: Check valid passport range
 # TODO: Check passport dates are reasonable; (not too far in the past, not too far in the future)
