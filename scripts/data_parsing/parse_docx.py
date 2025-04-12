@@ -42,6 +42,7 @@ class WealthInfo:
     total_wealth_range: Optional[str] = None
     wealth_sources: List[str] = field(default_factory=list)
     source_info: List[str] = field(default_factory=list)
+    assets: List[str] = field(default_factory=list)
 
 @dataclass_json
 @dataclass
@@ -194,6 +195,19 @@ class DocxParser:
         if "☒ Other" in text:
             sources.append("Other")
         return sources
+    
+    @staticmethod
+    def extract_assets(text):
+        """Extract assets from checkbox text"""
+        assets = {}
+        for line in text.splitlines():
+            if "☒" in line:
+                print(line)
+                line = line.replace("☒", "").strip()
+                if line:
+                    assets[line.split("EUR")[0].strip()] = line.split("EUR")[1].strip()
+        return assets
+
 
     @staticmethod
     def get_mandate_type(text):
@@ -363,6 +377,8 @@ class DocxParser:
                             client.wealth_info.wealth_sources = DocxParser.extract_wealth_sources(row_label)
                             if row_value:
                                 client.wealth_info.source_info.append(row_value)
+                        elif "estimated assets" in row_label.lower():
+                            client.wealth_info.assets = DocxParser.extract_assets(row_value)
                         # print(f"Row label: {row_label}, Row value: {row_value}")
                 
                 elif i == 13:  # Income info
@@ -446,5 +462,5 @@ def parse_docx_to_json(docx_file_path, output_json_path=None):
 if __name__ == "__main__":
     # Example usage:
     # For single file
-    json_data = parse_docx_to_json("profile.docx", "profile_output.json")
+    json_data = parse_docx_to_json("C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile.docx", "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile_output.json")
     # print("JSON data saved to profile_output.json")
