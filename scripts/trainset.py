@@ -3,7 +3,7 @@ import random
 import storage
 
 
-FOLDER = f"{os.path.dirname(__file__)}/../train2/"
+FOLDER = f"{os.path.dirname(__file__)}/../train/"
 
 
 random.seed(42)  # Set seed for reproducibility
@@ -153,6 +153,7 @@ if __name__ == "__main__":
     # upload_dataset()
     download_dataset()
 
+    exit(1)
     # Example usage of TrainIterator
     train_iterator = TrainIterator()
     for path in train_iterator:
