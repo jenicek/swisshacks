@@ -75,8 +75,6 @@ def parse_png_to_json(passport_png_path: str) -> dict:
     # Extract and parse the JSON response
     try:
         passport_data = json.loads(response.choices[0].message.content)
-        print(f"Extracted passport data: {passport_data}")
-        print(f"Successfully extracted passport data")
 
         # Save the extracted data to file for debugging/reference
         output_dir = Path(passport_png_path).parent

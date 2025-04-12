@@ -202,7 +202,6 @@ class DocxParser:
         assets = {}
         for line in text.splitlines():
             if "☒" in line:
-                print(line)
                 line = line.replace("☒", "").strip()
                 if line:
                     assets[line.split("EUR")[0].strip()] = line.split("EUR")[1].strip()
@@ -449,13 +448,12 @@ def parse_docx_to_json(docx_file_path, output_json_path=None):
     client_profile = DocxParser.parse_docx_file(docx_file_path)
     
     # Convert to JSON
-    json_data = client_profile.to_json(indent=2, ensure_ascii=False)
+    json_data = client_profile.to_json(indent=2, ensure_ascii=True)
     
     # Save to file if path provided
     if output_json_path:
         with open(output_json_path, 'w', encoding='utf-8') as f:
             f.write(json_data)
-        return None
     
     return json_data
 
