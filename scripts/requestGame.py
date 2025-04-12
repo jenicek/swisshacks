@@ -1,16 +1,22 @@
 import requests
 import json
 import time
+import os
 from dotenv import load_dotenv
 import hashlib
+import pathlib
+from storage import store_dict
 
+# local imports
 from model.rule_based_model import make_decision
 
-load_dotenv('C:\\Users\\jekatrinaj\\swisshacks\\.env')
 
-# import os
-from storage import store_dict
-# from storage import read_dict
+# Get the project root directory (assuming scripts is directly under project root)
+PROJECT_ROOT = pathlib.Path(__file__).parent.parent.absolute()
+
+# Load .env file from project root
+load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
+
 
 # API configuration
 BASE_URL = 'https://hackathon-api.mlo.sehlat.io'
@@ -28,7 +34,7 @@ def start_game():
         response.raise_for_status()
         response_data = response.json()
         
-        print(f"Game started successfully!")
+        print("Game started successfully!")
         print(f"Session ID: {response_data['session_id']}")
         print(f"Initial client ID: {response_data['client_id']}")
         
