@@ -1,0 +1,22 @@
+{
+  "account_name": "Liisa Laine",
+  "account_holder_name": "Liisa",
+  "account_holder_surname": "Laine",
+  "passport_number": "TG6402297",
+  "chf": false,
+  "eur": true,
+  "usd": false,
+  "other_ccy": "",
+  "building_number": "20",
+  "postal_code": "72740",
+  "city": "Siilinjärvi",
+  "country": "Finland",
+  "name": "Liisa Laine",
+  "phone_number": "+358 047 801 29 30",
+  "email": "liisa.laine@icloud.com",
+  "street_name": "Katariinankatu",
+  "_signature_fields": {
+    "specimen_signature": true,
+    "_signature_fields": true
+  }
+}

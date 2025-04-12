@@ -1,0 +1,68 @@
+{
+  "last_name": "Jespersen",
+  "first_name": "Noah",
+  "nationality": "Danish",
+  "passport_id": "EC5226685",
+  "id_type": "passport",
+  "id_issue_date": "2020-11-28",
+  "id_expiry_date": "2030-11-27",
+  "gender": "Male",
+  "country_of_domicile": "Denmark",
+  "birth_date": null,
+  "address": "Gammel Torv 72, 1780 Randers",
+  "contact_info": {
+    "telephone": "+45 97 45 10 86",
+    "email": "noah.jespersen@wanadoo.dk"
+  },
+  "personal_info": {
+    "is_politically_exposed": false,
+    "marital_status": "Married",
+    "highest_education": "Tertiary",
+    "education_history": "University College Absalon (2020)"
+  },
+  "employment": [
+    {
+      "current_status": {
+        "status_type": "Employee",
+        "since": "2023"
+      },
+      "employer": "Bestseller A/S",
+      "position": "Assistant Designer",
+      "annual_income": "278000 DKK p.A.",
+      "previous_profession": "",
+      "is_primary": true
+    }
+  ],
+  "wealth_info": {
+    "total_wealth_range": "EUR 1.5m-5m",
+    "wealth_sources": [
+      "Employment",
+      "Inheritance"
+    ],
+    "source_info": [
+      "grandfather,2017,Corporate Lawyer"
+    ]
+  },
+  "income_info": {
+    "total_income_range": "< EUR 250,000",
+    "source_info": "Denmark"
+  },
+  "account_details": {
+    "account_number": "",
+    "is_commercial_account": false,
+    "risk_profile": "Moderate",
+    "total_assets": 2460000.0,
+    "transfer_assets": 1500600.0,
+    "investment_preferences": {
+      "type_of_mandate": "Discretionary",
+      "investment_experience": "Inexperienced",
+      "investment_horizon": "Long-Term",
+      "expected_transactional_behavior": "",
+      "preferred_markets": [
+        "Denmark"
+      ]
+    }
+  },
+  "filename": "profile.docx",
+  "parsed_date": "2025-04-12T12:18:03.166029"
+}
