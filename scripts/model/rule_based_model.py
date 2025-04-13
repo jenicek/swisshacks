@@ -2,9 +2,10 @@ from abc import ABC, abstractmethod
 from client_data.client_data import ClientData
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import Tuple
 import unicodedata
+import textdistance
 from collections import defaultdict
 
 # Configure logging
@@ -55,20 +56,29 @@ class SimpleModel(Model):
         if flag_birth_date(client):
             print("Birth date mismatch")
             return 0
+        if flag_nationality(client):
+            print("Nationality mismatch")
+            return 0
+        if flat_date_consistencies(client):
+            print("Date inconsistencies detected")
+            return 0
+        # New
+        if flag_wealth(client):
+            print("Wealth inconsistencies detected")
+            return 0
         if flag_copy_paste(client):
             print("Copy-paste detected in the description")
             return 0
-        # if flag_wealth(client):
-        #     print("Wealth inconsistency detected")
-        #     return 0
+        if flag_gender(client):
+            print("Gender mismatch")
+            return 0
         return 1
 
 
-def to_ascii(input_str):
-    # Normalize to NFKD form and encode to ASCII bytes, ignoring non-ASCII chars
-    normalized = unicodedata.normalize("NFKD", input_str)
-    ascii_bytes = normalized.encode("ASCII", "ignore")
-    return ascii_bytes.decode("ASCII")
+def flag_gender(client: ClientData):
+    if client.client_profile["gender"][0] != client.passport["gender"]:
+        return True
+    return False
 
 
 def flag_missing_values(client: ClientData):
@@ -140,6 +150,20 @@ def flag_country(client: ClientData):
         return True
     return False
 
+def flag_nationality(client: ClientData):
+
+    passport_nationality = client.passport["nationality"].lower()
+    profile_nationality = client.client_profile["nationality"].lower()
+
+    if len(passport_nationality) == len(profile_nationality):
+        if passport_nationality != profile_nationality:
+            print(f"Client nationality mismatch: {client.passport['nationality']} != {client.client_profile['nationality']}")
+            return True
+    else:
+        if profile_nationality not in passport_nationality:
+            print(f"Profile nationality {profile_nationality} does not match {passport_nationality  }")
+            return True
+    return False
 
 def flag_address(client: ClientData):
     address = client.client_profile[
@@ -176,17 +200,17 @@ def flag_address(client: ClientData):
                 postal_code = location_part
 
     # Log the parsed address for debugging
-    logger.info(
-        f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'"
-    )
+    # logger.info(
+    #     f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'"
+    # )
 
-    if to_ascii(street) != to_ascii(client.account_form["street_name"]):
+    if remove_accents(street) != remove_accents(client.account_form["street_name"]):
         return True
     if street_number != client.account_form["building_number"]:
         return True
     if postal_code != client.account_form["postal_code"]:
         return True
-    if to_ascii(city) != to_ascii(client.account_form["city"]):
+    if remove_accents(city) != remove_accents(client.account_form["city"]):
         return True
 
     return False
@@ -221,6 +245,7 @@ def flag_inconsistent_name(client: ClientData):
     passport_last_name: str = remove_accents(client.passport.get("last_name").lower())
     passport_given_name: str = remove_accents(client.passport.get("given_name").lower())
 
+
     # account.json data consistency
     if account_account_name != account_name:
         print(f"Account name mismatch: {account_account_name=} != {account_name=}")
@@ -236,9 +261,6 @@ def flag_inconsistent_name(client: ClientData):
         return True
 
     # cross value consistency
-    if passport_given_name != account_holder_name:
-        print(f"Given name mismatch: {passport_given_name=} != {account_holder_name=}")
-        return True
 
     if profile_last_name != passport_last_name:
         print(f"Last name mismatch: {profile_last_name=} != {passport_last_name=}")
@@ -246,6 +268,10 @@ def flag_inconsistent_name(client: ClientData):
 
     if profile_full_name != account_name:
         print(f"Full name mismatch: {profile_full_name=} != {account_name=}")
+        return True
+
+    if passport_given_name != account_holder_name:
+        print(f"Given name mismatch: {passport_given_name=} != {account_holder_name=}")
         return True
 
     if passport_last_name != profile_last_name:
@@ -278,7 +304,7 @@ def simple_mrz(passport_data: dict) -> Tuple[str, str]:
         "%y%m%d"
     )
     line2 = f"{passport_data['passport_number'].upper()}{passport_data['country_code']}{birth_date}"
-    return [l1.upper() for l1 in line1], line2.upper()
+    return [remove_accents(l1.upper()) for l1 in line1], line2.upper()
 
 
 def flag_passport(client: ClientData):
@@ -295,9 +321,10 @@ def flag_passport(client: ClientData):
     mrz_line1, mrz_line2 = simple_mrz(client.passport)
 
     passport_line1, passport_line2 = client.passport["passport_mrz"]
-    passport_line1 = [s for s in passport_line1.split("<") if s]
+    passport_line1 = [remove_accents(s.upper()) for s in passport_line1.split("<") if s]
 
-    if mrz_line1 != passport_line1 or mrz_line2[:18] != passport_line2[:18]:
+    if textdistance.levenshtein(" ".join(mrz_line1), " ".join(passport_line1)) > 1 \
+            or textdistance.levenshtein(mrz_line2[:18], passport_line2[:18]) > 2:
         print(mrz_line1, passport_line1)
         print(mrz_line2[:18], passport_line2[:18])
         return True
@@ -307,19 +334,51 @@ def flag_passport(client: ClientData):
 
     return False
 
-
 def flag_birth_date(client: ClientData):
     # Check if birth dates match between client profile and passport
     if client.client_profile["birth_date"] != client.passport["birth_date"]:
+        print(f"Birth date mismatch: {client.client_profile['birth_date']} != {client.passport['birth_date']}")
         return True
     
+    passport_issue_date = client.passport["passport_issue_date"]
+    passport_expiry_date = client.passport["passport_expiry_date"]
+    
+    if client.client_profile["id_type"] == "passport":
+        if passport_issue_date!= client.client_profile["id_issue_date"]:
+            print(f"Passport issue date mismatch: {passport_issue_date} != {client.client_profile['id_issue_date']}")
+            return True
+    
+        if passport_expiry_date != client.client_profile["id_expiry_date"]:
+            print(f"Passport expiry date mismatch: {passport_expiry_date} != {client.client_profile['id_expiry_date']}")
+            return True
+        
+    today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
+    
+    if datetime.strptime(passport_issue_date, "%Y-%m-%d").date() > datetime.strptime(passport_expiry_date, "%Y-%m-%d").date():
+        print(f"Passport issue date {passport_issue_date} is after expiry date {passport_expiry_date}")
+        return True
+    if datetime.strptime(passport_issue_date, "%Y-%m-%d").date() < datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date():
+        print(f"Passport issue date {passport_issue_date} is before birth date {client.client_profile['birth_date']}")
+        return True
+    if datetime.strptime(passport_expiry_date, "%Y-%m-%d").date() < datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date():
+        print(f"Passport expiry date {passport_expiry_date} is before birth date {client.client_profile['birth_date']}")
+        return True
+    if datetime.strptime(passport_issue_date, "%Y-%m-%d").date() > today:
+        print(f"Passport issue date {passport_issue_date} is in the future")
+        return True
+    if datetime.strptime(passport_expiry_date, "%Y-%m-%d").date() < today:
+        print(f"Passport expiry date {passport_expiry_date} is in the past")
+        return True
+
     try:
-        today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
         birth_date = datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date()
-        
+
         # Calculate age
+        if birth_date > today:
+            logger.info("Birth date is in the future")
+            return True
         age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
-        
+
         # Check if age is reasonable (typically 18-120 years for banking clients)
         if age < 18:
             logger.info(f"Client is too young: {age} years old")
@@ -331,7 +390,7 @@ def flag_birth_date(client: ClientData):
         # If there's an issue parsing the date
         logger.error(f"Invalid birth date format: {client.client_profile['birth_date']}")
         return True
-    
+
     return False
 
 def find_redundant_sentences(data_dict):
@@ -367,66 +426,39 @@ def flag_copy_paste(client: ClientData):
         if len(sentence) > 120:
             return True
 
-# def flat_date_consistencies(client: ClientData):
 
-#     for duplicate_field in (
-#         "birth_date",
-#         "passport_issue_date",
-#         "passport_expiry_date",
-#         "passport_number",
-#     ):
-#         if client.passport[duplicate_field] != client.client_profile[duplicate_field]:
-#             return True
 
-#     today = datetime.strptime("2025-04-01", "%Y-%m-%d").date()
-#     birth_date = datetime.strptime(
-#         client.client_profile["birth_date"], "%Y-%m-%d"
-#     ).date()
-#     passport_issue_date = datetime.strptime(
-#         client.client_profile["passport_issue_date"], "%Y-%m-%d"
-#     ).date()
-#     passport_expiry_date = datetime.strptime(
-#         client.client_profile["passport_expiry_date"], "%Y-%m-%d"
-#     ).date()
+def flat_date_consistencies(client: ClientData):
+    for field1, field2 in (
+        ("birth_date", "birth_date"),
+        ("passport_issue_date", "id_issue_date"),
+        ("passport_expiry_date", "id_expiry_date"),
+        ("passport_number", "passport_id"),
+    ):
+        if client.passport[field1] != client.client_profile[field2]:
+            return True
 
-#     secondary_school_grad = client.client_profile["secondary_school"]["graduation_year"]
-#     higher_education_years = [
-#         edu["graduation_year"] for edu in client.client_profile["higher_education"]
-#     ]
-#     employment_start_ends = [
-#         (e["start_year"], e["end_year"])
-#         for e in client.client_profile["employment_history"]
-#     ]
+    today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
+    birth_date = datetime.strptime(
+        client.client_profile["birth_date"], "%Y-%m-%d"
+    ).date()
+    issue_date = datetime.strptime(
+        client.client_profile["id_issue_date"], "%Y-%m-%d"
+    ).date()
+    expiry_date = datetime.strptime(
+        client.client_profile["id_expiry_date"], "%Y-%m-%d"
+    ).date()
 
-#     try:
-#         prev = 0
-#         for start, end in employment_start_ends:
-#             assert prev <= start  # TODO should be an error?
+    # TODO: validate dates from key "employment"
 
-#         assert birth_date < passport_issue_date < passport_expiry_date
-#         assert passport_issue_date < today
-#         assert (
-#             birth_date.year + 16 < employment_start_ends[0][0]
-#             if employment_start_ends
-#             else today.year
-#         )
-#         assert birth_date.year + 12 < secondary_school_grad
-#         assert today.year - birth_date.year < 120
-#         assert birth_date < date(secondary_school_grad, 1, 1) <= today
-#         assert all(
-#             date(secondary_school_grad, 1, 1) <= date(higher_edu, 1, 1) <= today
-#             for higher_edu in higher_education_years
-#         )
-#         assert all(
-#             birth_date
-#             < date(start, 1, 1)
-#             <= (date(end, 1, 1) if end else today)
-#             <= today
-#             for start, end in employment_start_ends
-#         )
-#     except AssertionError:
-#         return True
-#     return False
+    if not birth_date < issue_date < today:
+        return True
+    if not issue_date < expiry_date:
+        return True
+    if not 18 <= today.year - birth_date.year < 120:
+        return True
+    return False
+
 
 
 # def flag_dates(client: ClientData):
@@ -457,15 +489,23 @@ def flag_copy_paste(client: ClientData):
 #     return False
 
 
+# TODO: check correct dates (i.e., work since <today, graduation_year < today)
+# TODO: Check valid passport range
+# TODO: Check passport dates are reasonable; (not too far in the past, not too far in the future)
+# TODO: Check valid passport
+# TODO: Take a list of country codes, country names and check we have correct stuff in passport - https://www.kaggle.com/datasets/phanee16/currency-and-country-code-mapping
+        
 def flag_wealth(client: ClientData):
     total_assets = client.client_profile["account_details"]["total_assets"]
     transfer_assets = client.client_profile["account_details"]["transfer_assets"]
 
     if total_assets < 0 or transfer_assets < 0:
+        print("Negative assets detected")
         return True
     if transfer_assets > total_assets:
+        print("Transfer assets exceed total assets")
         return True
-    
+
     combined_assets = 0
     for _, value in client.client_profile["wealth_info"]["assets"].items():
         value = int(value)
@@ -474,31 +514,25 @@ def flag_wealth(client: ClientData):
         combined_assets += value
 
     if combined_assets > total_assets:
+        print(f"Combined assets exceed total assets: {combined_assets} > {total_assets}")
         return True
-    
+
     total_wealth_range = client.client_profile["wealth_info"]["total_wealth_range"]
     # "< EUR 1.5m", "EUR 1.5m-5m", "EUR 5m-10m", "EUR 10m.-20m", "EUR 20m.-50m", "> EUR 50m"
 
     # Check if the total assets fall within the specified range
-    if total_wealth_range == "< EUR 1.5m":
-        return not (combined_assets < 1_500_000)
-    elif total_wealth_range == "EUR 1.5m-5m":
-        return not (1_500_000 <= combined_assets < 5_000_000)
-    elif total_wealth_range == "EUR 5m-10m":
-        return not (5_000_000 <= combined_assets < 10_000_000)
-    elif total_wealth_range == "EUR 10m.-20m":
-        return not (10_000_000 <= combined_assets < 20_000_000)
-    elif total_wealth_range == "EUR 20m.-50m":
-        return not (20_000_000 <= combined_assets < 50_000_000)
-    elif total_wealth_range == "> EUR 50m":
-        return not (combined_assets > 50_000_000)
+    total_wealth_range = total_wealth_range.replace(" ", "")
+    if total_wealth_range == "< EUR 1.5m" and combined_assets > 1_500_000:
+        return True
+    elif total_wealth_range == "EUR 1.5m-5m" and (1_500_000 > combined_assets or combined_assets > 5_000_000):
+        return True
+    elif total_wealth_range == "EUR 5m-10m" and (5_000_000 > combined_assets or combined_assets > 10_000_000):
+        return True
+    elif total_wealth_range == "EUR 10m.-20m" and (10_000_000 > combined_assets or combined_assets > 20_000_000):
+        return True
+    elif total_wealth_range == "EUR 20m.-50m" and (20_000_000 > combined_assets or combined_assets > 50_000_000):
+        return True
+    elif total_wealth_range == "> EUR 50m" and combined_assets <= 50_000_000:
+        return True
 
     return False
-
-
-# TODO: check correct dates (i.e., work since <today, graduation_year < today)
-# TODO: Check valid passport range
-# TODO: Check passport dates are reasonable; (not too far in the past, not too far in the future)
-# TODO: Check valid passport
-# TODO: Take a list of country codes, country names and check we have correct stuff in passport
-
