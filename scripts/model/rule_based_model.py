@@ -72,6 +72,9 @@ class SimpleModel(Model):
         if flag_gender(client):
             print("Gender mismatch")
             return 0
+        if flat_date_consistencies(client):
+            print("Date inconsistencies detected")
+            return 0
         return 1
 
 
