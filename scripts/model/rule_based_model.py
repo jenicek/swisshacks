@@ -17,13 +17,18 @@ logging.basicConfig(
 logger = logging.getLogger("validation")
 
 
-def remove_accents(text):
-    # Normalize to NFKD form (decomposes characters)
-    nfkd_form = unicodedata.normalize("NFKD", text)
-    # Filter out diacritical marks
-    only_ascii = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-    return only_ascii
+# def remove_accents(text):
+#     # Normalize to NFKD form (decomposes characters)
+#     nfkd_form = unicodedata.normalize("NFKD", text)
+#     # Filter out diacritical marks
+#     only_ascii = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+#     return only_ascii
 
+def remove_accents(input_str):
+    # Normalize to NFKD form and encode to ASCII bytes, ignoring non-ASCII chars
+    normalized = unicodedata.normalize("NFKD", input_str)
+    ascii_bytes = normalized.encode("ASCII", "ignore")
+    return ascii_bytes.decode("ASCII")
 
 class Model(ABC):
     @abstractmethod
@@ -319,9 +324,11 @@ def flag_passport(client: ClientData):
         == client.account_form["passport_number"]
         == client.passport["passport_number"]
     ):
+        print(f"Passport numbers are not matching: {client.client_profile['passport_id']} != {client.account_form['passport_number']} != {client.passport['passport_number']}")
         return True
 
     if len(client.passport["passport_mrz"]) != 2:
+        print("MRZ not in prescribed format")
         return True
 
     mrz_line1, mrz_line2 = simple_mrz(client.passport)
