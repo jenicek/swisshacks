@@ -62,7 +62,6 @@ class SimpleModel(Model):
         if flat_date_consistencies(client):
             print("Date inconsistencies detected")
             return 0
-        # New
         if flag_wealth(client):
             print("Wealth inconsistencies detected")
             return 0
@@ -74,6 +73,10 @@ class SimpleModel(Model):
             return 0
         if flat_date_consistencies(client):
             print("Date inconsistencies detected")
+            return 0
+        # New
+        if flag_description(client):
+            print("Description mismatch")
             return 0
         return 1
 
@@ -537,5 +540,141 @@ def flag_wealth(client: ClientData):
         return True
     elif total_wealth_range == "> EUR 50m" and combined_assets <= 50_000_000:
         return True
+
+    return False
+
+prompt = """
+I have this json:
+{client_data}
+
+fill these keys:
+{{
+    "age": age,
+    "marital_status": single / married / divorced / widowed
+    "education": [
+           {{
+                 "university": university,
+                 "graduation_year": graduation_year
+           }}
+    ],
+    "employment": [
+    {{
+        "company": company,
+        "position": position
+    }}
+    ],
+    "savings": savings,
+    "inheritance": inheritance (1 word, i.e., true, false),
+    "inherited_from": inherited_from (1 word, i.e., grandmother, father, mother, uncle, aunt, etc.),
+    "inheritment_year": inheritment_year (YYYY),
+    "occupation_of_the_person_from_whom_inherited": occupation_of_the_person_from_whom_inherited,
+    "real_estate_value": real_estate_value
+        "real_estate_details": [
+        {{
+        "property value": property_value,
+        "property location": property_location
+        }}
+    ],
+}}
+ The lists for education, employment_history and real_estate_details may have 0, 1 or more objects.
+ reason for yourself. DONT infer data, just use whats there.
+ Missing values should be marked with empty string ""
+ Denominations, dimensions for prices and numbers should be ignored. just put the number e.g 15000 and NOT 15000 EUR. marital status should be 1 word, e.g. single, married, divorced, widowed
+ output should be a valid json with the given template. just fill the values, nothing else. 
+"""
+
+def flag_compare_age(gpt_age, client: ClientData):
+    if gpt_age in (None, "", 'none', 'None'):
+        return False
+    gpt_age = int(gpt_age)
+    today = date.today()
+
+    birth_date = datetime.strptime(
+        client.client_profile["birth_date"], "%Y-%m-%d"
+    ).date()
+
+    birthday_age = today.year - birth_date.year
+
+    return abs(gpt_age-birthday_age) > 2
+
+def simple_compare(gpt_value, client_value):
+    if gpt_value in (None, "", 'none', 'None'):
+        return False
+    gpt_value = str(gpt_value).lower()
+    client_value = str(client_value).lower()
+
+    return gpt_value != client_value
+
+from openai import AzureOpenAI
+import json
+
+def flag_description(client: ClientData):
+    api_key = "3L2W6niZ2aTcZWiobBG5d54g3M3xTvbbUWqLjuhajbyDYIpJ6xRGJQQJ99BDACYeBjFXJ3w3AAABACOGzqpD"
+    api_endpoint = "https://swisshacks-3plus1.openai.azure.com"
+
+    openai_client = AzureOpenAI(
+        api_key=api_key,
+        api_version="2025-03-01-preview",
+        azure_endpoint=api_endpoint,
+    )
+
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt.format(client_data=client.client_description)}],
+        temperature=0.1,
+        response_format={"type": "json_object"},
+    )
+    try:
+        response_data = json.loads(response.choices[0].message.content)
+    except json.decoder.JSONDecodeError:
+        return False
+
+    try:
+        if flag_compare_age(response_data.get('age'), client):
+            return True
+        
+        if simple_compare(response_data.get('marital_status'), client.client_profile['personal_info']['marital_status']):
+            return True
+        
+        if simple_compare(response_data.get('company'), client.client_profile["employment"]['employer']):
+            return True
+        
+        if simple_compare(response_data.get('position'), client.client_profile["employment"]['position']):
+            return True
+        
+        inheritance = response_data.get('inheritance')
+        wealth_sources = client.client_profile["wealth_info"]["wealth_sources"]
+        inherit_profile = "Inheritance" in wealth_sources
+        if inheritance != inherit_profile:
+            return True
+        
+        # Inheritance source
+        if inheritance:
+            inh_from = response_data.get('inherited_from')
+            inh_year = response_data.get('inheritment_year')
+            inh_pos = response_data.get('occupation_of_the_person_from_whom_inherited')
+
+            inh_info = client.client_profile["wealth_info"]["source_info"]
+            if inh_from and inh_from not in inh_info:
+                return True
+            if inh_year and inh_year not in inh_info:
+                return True
+            if inh_pos and inh_pos not in inh_info:
+                return True
+
+        # # Education
+        # education = response_data.get('education')
+
+        # if education:
+        #     edu_prof = client.client_profile["personal_info"]["education_history"]
+        #     if 
+
+
+        # if flag_real_estate_details(response_data, client):
+        #     return True
+
+    except Exception as e:
+        logger.error(f"Error processing response: {e}")
+        return False
 
     return False
