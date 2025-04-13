@@ -1,10 +1,17 @@
 import os
 import random
+from pathlib import Path
+from dotenv import load_dotenv
+
+PROJECT_ROOT = Path(__file__).parent.parent.absolute()
+
+# Load .env file from project root
+print(f"Env path: {os.path.join(PROJECT_ROOT, '.env')}")
+load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
 import storage
 
 
 FOLDER = f"{os.path.dirname(__file__)}/../train/"
-
 
 random.seed(42)  # Set seed for reproducibility
 
