@@ -7,6 +7,7 @@ from typing import Tuple
 import unicodedata
 import textdistance
 from collections import defaultdict
+import pycountry
 
 # Configure logging
 logging.basicConfig(
@@ -52,6 +53,7 @@ class SimpleModel(Model):
             return 0
         if flag_inconsistent_name(client):
             return 0
+        # TODO: HREER!
         if flag_passport(client):
             print("Passport mismatch")
             return 0
@@ -70,9 +72,6 @@ class SimpleModel(Model):
         if flag_wealth(client):
             print("Wealth inconsistencies detected")
             return 0
-        if flag_copy_paste(client):
-            print("Copy-paste detected in the description")
-            return 0
         if flag_gender(client):
             print("Gender mismatch")
             return 0
@@ -83,6 +82,9 @@ class SimpleModel(Model):
         if flag_description(client):
             print("Description mismatch")
             return 0
+        if flag_passport_country_code(client):
+            print("Passport country code mismatch")
+            return 0
         return 1
 
 
@@ -90,7 +92,27 @@ def flag_gender(client: ClientData):
     if client.client_profile["gender"][0] != client.passport["gender"]:
         return True
     return False
+def flag_passport_country_code(client: ClientData):
+    passport_country_code = client.passport["country_code"]
+    passport_country_name = client.passport["country"]
 
+    if len(passport_country_code) != 3:
+        print("Passport country code is incorrect!")
+        return True
+
+    pycntry_country_code = pycountry.countries.get(alpha_3=passport_country_code)
+    if not pycntry_country_code:
+        print(f"Country code {passport_country_code} is not valid!")
+        return True
+
+    pycountry_country_fz_name = pycountry.countries.search_fuzzy(passport_country_name)
+
+    if pycountry_country_fz_name:
+        if pycountry_country_fz_name[0] != pycntry_country_code:
+            print(f"Country name {passport_country_name} does not match country code {passport_country_code}")
+            return True
+
+    return False
 
 def flag_missing_values(client: ClientData):
     NULLABLE_FIELDS = (
@@ -347,6 +369,30 @@ def flag_passport(client: ClientData):
 
     return False
 
+def flag_passport_2(client: ClientData):
+    if not (
+        client.client_profile["passport_id"]
+        == client.account_form["passport_number"]
+        == client.passport["passport_number"]
+    ):
+        return True
+
+    mrz_line1, mrz_line2 = simple_mrz(client.passport)
+    joint_mrz = "".join([mrz_line1, mrz_line2])
+
+    passport_mrz = "".join(client.passport["passport_mrz"])
+    passport_mrz = [remove_accents(s.upper()) for s in passport_mrz.split("<") if s]
+
+
+    if textdistance.levenshtein(joint_mrz, "".join(passport_mrz)) > 3:
+        print(joint_mrz, passport_mrz)
+        return True
+
+    if not re.match("\w\w\d{7}", client.passport["passport_number"]):
+        return True
+
+    return False
+
 def flag_birth_date(client: ClientData):
     # Check if birth dates match between client profile and passport
     if client.client_profile["birth_date"] != client.passport["birth_date"]:
@@ -429,16 +475,6 @@ def find_redundant_sentences(data_dict):
     }
 
     return redundant_sentences
-
-def flag_copy_paste(client: ClientData):
-    info = client.client_description
-    redundant_sentences = find_redundant_sentences(info)
-    if not redundant_sentences:
-        return False
-    for sentence, _ in redundant_sentences.items():
-        if len(sentence) > 120:
-            return True
-
 
 
 def flat_date_consistencies(client: ClientData):
@@ -558,33 +594,25 @@ fill these keys:
 {{
     "age": age,
     "marital_status": single / married / divorced / widowed
-    "education": [
+    "education": 
            {{
                  "university": university,
                  "graduation_year": graduation_year
            }}
-    ],
-    "employment": [
+    ,
+    "employment": 
     {{
         "company": company,
         "position": position
     }}
-    ],
+    ,
     "savings": savings,
-    "inheritance": inheritance (1 word, i.e., true, false),
+    "inheritance": boolean inheritance (1 word, i.e., true, false),
     "inherited_from": inherited_from (1 word, i.e., grandmother, father, mother, uncle, aunt, etc.),
     "inheritment_year": inheritment_year (YYYY),
     "occupation_of_the_person_from_whom_inherited": occupation_of_the_person_from_whom_inherited,
-    "real_estate_value": real_estate_value
-        "real_estate_details": [
-        {{
-        "property value": property_value,
-        "property location": property_location
-        }}
-    ],
 }}
- The lists for education, employment_history and real_estate_details may have 0, 1 or more objects.
- reason for yourself. DONT infer data, just use whats there.
+ DONT infer data, just use whats there.
  Missing values should be marked with empty string ""
  Denominations, dimensions for prices and numbers should be ignored. just put the number e.g 15000 and NOT 15000 EUR. marital status should be 1 word, e.g. single, married, divorced, widowed
  output should be a valid json with the given template. just fill the values, nothing else. 
@@ -635,39 +663,52 @@ def flag_description(client: ClientData):
         response_data = json.loads(response.choices[0].message.content)
     except json.decoder.JSONDecodeError:
         return False
+    
+    print(response_data)
 
-    try:
-        if flag_compare_age(response_data.get('age'), client):
-            return True
-        
-        if simple_compare(response_data.get('marital_status'), client.client_profile['personal_info']['marital_status']):
-            return True
-        
-        if simple_compare(response_data.get('company'), client.client_profile["employment"]['employer']):
-            return True
-        
-        if simple_compare(response_data.get('position'), client.client_profile["employment"]['position']):
-            return True
-        
-        inheritance = response_data.get('inheritance')
-        wealth_sources = client.client_profile["wealth_info"]["wealth_sources"]
-        inherit_profile = "Inheritance" in wealth_sources
-        if inheritance != inherit_profile:
-            return True
-        
-        # Inheritance source
-        if inheritance:
-            inh_from = response_data.get('inherited_from')
-            inh_year = response_data.get('inheritment_year')
-            inh_pos = response_data.get('occupation_of_the_person_from_whom_inherited')
+    # try:
+    if flag_compare_age(response_data.get('age'), client):
+        print(f"age mismatch: {response_data.get('age')} != {client.client_profile['birth_date']}")
+        return True
+    
+    if simple_compare(response_data.get('marital_status'), client.client_profile['personal_info']['marital_status']):
+        print(f"marital status mismatch: {response_data.get('marital_status')} != {client.client_profile['personal_info']['marital_status']}")
+        return True
+    
+    if simple_compare(response_data.get('company'), client.client_profile["employment"][0]['employer']):
+        print(f"company mismatch: {response_data.get('company')} != {client.client_profile['employment'][0]['employer']}")
+        return True
+    
+    if simple_compare(response_data.get('position'), client.client_profile["employment"][0]['position']):
+        print(f"position mismatch: {response_data.get('position')} != {client.client_profile['employment'][0]['position']}")
+        return True
+    
+    inheritance = response_data.get('inheritance')
+    if isinstance(inheritance, str):
+        inheritance = inheritance.lower() == "true"
 
-            inh_info = client.client_profile["wealth_info"]["source_info"]
-            if inh_from and inh_from not in inh_info:
-                return True
-            if inh_year and inh_year not in inh_info:
-                return True
-            if inh_pos and inh_pos not in inh_info:
-                return True
+    wealth_sources = client.client_profile["wealth_info"]["wealth_sources"]
+    inherit_profile = "Inheritance" in wealth_sources
+    if inheritance != inherit_profile and response_data.get('inherited_from'):
+        print(f"inheritance mismatch: {inheritance} != {inherit_profile}")
+        return True
+    
+    # Inheritance source
+    if inheritance:
+        inh_from = response_data.get('inherited_from')
+        inh_year = response_data.get('inheritment_year')
+        inh_pos = response_data.get('occupation_of_the_person_from_whom_inherited')
+
+        inh_info = client.client_profile["wealth_info"]["source_info"]
+        if inh_from and inh_from not in inh_info[0]:
+            print(f"inheritance source mismatch: {inh_from} != {inh_info}")
+            return True
+        if inh_year and str(inh_year) not in inh_info[0]:
+            print(f"inheritance year mismatch: {inh_year} != {inh_info}")
+            return True
+        if inh_pos and inh_pos not in inh_info[0]:
+            print(f"inheritance position mismatch: {inh_pos} != {inh_info}")
+            return True
 
         # # Education
         # education = response_data.get('education')
@@ -680,8 +721,8 @@ def flag_description(client: ClientData):
         # if flag_real_estate_details(response_data, client):
         #     return True
 
-    except Exception as e:
-        logger.error(f"Error processing response: {e}")
-        return False
+    # except Exception as e:
+    #     logger.error(f"Error processing response: {e}")
+    #     return False
 
     return False
