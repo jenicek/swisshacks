@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from client_data.client_data import ClientData
 import re
+import os
 import logging
 from datetime import datetime, date
 from typing import Tuple
@@ -8,6 +9,8 @@ import unicodedata
 import textdistance
 from collections import defaultdict
 import pycountry
+from openai import AzureOpenAI
+import json
 
 # Configure logging
 logging.basicConfig(
@@ -640,17 +643,13 @@ def simple_compare(gpt_value, client_value):
 
     return gpt_value != client_value
 
-from openai import AzureOpenAI
-import json
 
 def flag_description(client: ClientData):
-    api_key = "3L2W6niZ2aTcZWiobBG5d54g3M3xTvbbUWqLjuhajbyDYIpJ6xRGJQQJ99BDACYeBjFXJ3w3AAABACOGzqpD"
-    api_endpoint = "https://swisshacks-3plus1.openai.azure.com"
 
     openai_client = AzureOpenAI(
-        api_key=api_key,
+        api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
         api_version="2025-03-01-preview",
-        azure_endpoint=api_endpoint,
+        azure_endpoint=os.environ.get("AZURE_OPENAI_ENDPOINT"),
     )
 
     response = openai_client.chat.completions.create(
