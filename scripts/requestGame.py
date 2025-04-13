@@ -165,14 +165,14 @@ def run_game():
         save_json_output(parsed_txt, output_dir / "description.json")
 
         client_file = ClientData(
-            client_file=str(output_dir),
-            account_form=form_data,
-            client_description=parsed_txt,
-            client_profile=json.loads(profile_data),
-            passport=parsed_png,
-            label=0)
-        
+        client_file=str(output_dir),
+        account_form=form_data,
+        client_description=parsed_txt,
+        client_profile=json.loads(profile_data),
+        passport=parsed_png,
+        label=0)
         decision = predictor.predict(client_file)
+        
         print(f"Decision: {decision}")
         response = send_decision(session_id, current_client_id, decision)
 
@@ -217,7 +217,7 @@ def run_game_continuously():
     while True:
         run_game()
         print("\nRestarting game in 3 seconds...")
-        time.sleep(3)  # Delay before starting a new game
+        time.sleep(1)  # Delay before starting a new game
 
 
 
@@ -246,6 +246,6 @@ def eval_on_trainset():
 
 
 if __name__ == "__main__":
-    run_game()
-    # run_game_continuously()
+    # run_game()
+    run_game_continuously()
     # eval_on_trainset()

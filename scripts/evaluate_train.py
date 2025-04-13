@@ -16,12 +16,13 @@ from model.rule_based_model import SimpleModel
 
 
 def eval_on_trainset():
-    trainiter = trainset.TrainIterator(limit=100, maxkey=1000)
+    trainiter = trainset.TrainIterator(limit=100, minkey=2001)
     rule_based_model = SimpleModel()
 
     for path in trainiter:
         input_dir = Path(path)
-        identifier = path.split('/')[-1]
+        print(input_dir)
+        identifier = path.split('\\')[-1]
 
         with open(input_dir / "account.pdf", "rb") as file:
             form = parse_pdf_banking_form.parse_banking_pdf(file.read())
@@ -32,9 +33,12 @@ def eval_on_trainset():
 
         cd = ClientData(identifier, form, description, profile, passport)
         prediction = rule_based_model.predict(cd)
+        gt = int(path.split('\\')[-3][-1])
+        print(f"Prediction: {prediction}, GT: {gt}, Status: {gt == prediction}")
 
         trainiter.predict(prediction == 1)
         print(trainiter, input_dir)
+        print("----------")
 
 
 if __name__ == "__main__":

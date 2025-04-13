@@ -66,7 +66,7 @@ def parse_png(image_data: bytes) -> dict:
     encoded_image = base64.b64encode(image_data).decode("utf-8")
     client_openai = AzureOpenAI(
         api_key=api_key,
-        api_version="2025-01-01-preview",
+        api_version="2025-03-01-preview",
         azure_endpoint=api_endpoint,
     )
 
