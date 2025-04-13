@@ -28,8 +28,7 @@ def parse_png_to_json(passport_png_path: str) -> dict:
 
     # Extract and parse the JSON response
     try:
-        print(f"Extracted passport data: {passport_data}")
-        print(f"Successfully extracted passport data")
+        print(f"Successfully extracted passport data: {passport_data}")
 
         # Save the extracted data to file for debugging/reference
         output_dir = Path(passport_png_path).parent
@@ -94,7 +93,8 @@ def parse_png(image_data: bytes) -> dict:
             {
                 "role": "system",
                 "content": f"You are a helpful assistant focused on parsing image data from a passport to a structured JSON format.\
-                    Extract all visible information from the passport image. Return ONLY valid JSON without any additional text.\
+                    Extract all visible information in the exact order as presented in the passport image. Return ONLY valid JSON without any additional text.\
+                    Do not change order of any items within the required format fields and be very precise in extracting all human readable characters.\
                         The required JSON format is: {passport_json_schema}",
             },
             {
