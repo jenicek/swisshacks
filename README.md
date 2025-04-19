@@ -1,4 +1,16 @@
-# SwissHacks Monorepo
+# 3plus1 at SwissHacks 2025 - Winning solution
+
+SwissHacks 2025 took place on April 11-13, 2025, in Zurich, with 54 great teams competing.
+
+Our team took home:
+
+- 🥇 The Overall Winner title
+- 💼 The Julius Baer Challenge
+- 🎉 The Audience Prize
+
+![3plus1.jpg](./3plus1.jpg)
+
+## Monorepo structure
 
 A monorepo containing:
 
@@ -93,7 +105,6 @@ This project is configured with GitHub Actions for CI/CD:
 
 For CI/CD to work properly, add these secrets to your GitHub repository:
 
-- `AWS_ROLE_ARN` - ARN of the role with permissions to deploy
 - `AWS_ACCESS_KEY_ID` - AWS access key
 - `AWS_SECRET_ACCESS_KEY` - AWS secret key
 - `DB_USERNAME` - Database username
