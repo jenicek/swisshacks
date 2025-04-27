@@ -104,7 +104,7 @@ def eval_on_trainset():
             
             if stats.total_samples % 50 == 0:
                 print(stats)
-    except KeyboardInterrupt as e:
+    except KeyboardInterrupt:
         print("User interrupted the run")
     except Exception as e:
         print(f"An error occurred: {e}")
