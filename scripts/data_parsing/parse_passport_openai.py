@@ -5,13 +5,14 @@ import os
 from openai import AzureOpenAI
 
 from client_data.client_passport import ClientPassport
+from data_parsing.client_parser import ParserClass
 
 # Get API key from environment variable or define it
 api_key = os.environ.get("AZURE_OPENAI_API_KEY")
 api_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
 
 
-class PassportParserOpenAI():
+class PassportParserOpenAI(ParserClass):
     def __init__(self, *args, **kwargs):
         """
         Initialize the PassportParserOpenAI class.

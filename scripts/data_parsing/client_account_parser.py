@@ -6,6 +6,7 @@ from client_data.client_account import (
 )
 import io
 from typing import Union, BinaryIO, Dict, Any
+from data_parsing.client_parser import ParserClass
 
 try:
     from PyPDF2 import PdfReader
@@ -13,7 +14,7 @@ except ImportError:
     raise ImportError("PyPDF2 package is required. Install it with: pip install PyPDF2")
 
 
-class ClientAccountParser:
+class ClientAccountParser(ParserClass):
     """Parser for client account pdf files"""
 
     @staticmethod

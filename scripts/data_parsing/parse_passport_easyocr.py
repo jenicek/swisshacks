@@ -11,6 +11,7 @@ from PIL import Image
 
 # local imports
 from scripts.client_data.client_passport import PassportDataclass
+from data_parsing.client_parser import ParserClass
 
 
 FIELD_BB ={
@@ -30,7 +31,7 @@ FIELD_BB ={
 }
 
 
-class PassportParserEasyOCR:
+class PassportParserEasyOCR(ParserClass):
     def __init__(self, *args, **kwargs):
         self.reader = easyocr.Reader(['en'])  # specify the language
         self.threshold = 0.1  # default threshold for OCR confidence
