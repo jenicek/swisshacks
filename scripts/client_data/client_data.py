@@ -26,3 +26,14 @@ class ClientData:
     # Label (0 or 1) corresponding to the ground truth information used
     # for training. May be none.
     label: int | None = None
+
+    def __post_init__(self):
+        assert self.account_form is not None, "Account form cannot be None"
+        assert self.client_description is not None, "Client description cannot be None"
+        assert self.client_profile is not None, "Client profile cannot be None"
+        assert self.passport is not None, "Passport cannot be None"
+
+        assert self.account_form.is_valid(), "Account form is not valid"
+        # assert self.client_description.is_valid(), "Client description is not valid"
+        # assert self.client_profile.is_valid(), "Client profile is not valid"
+        # assert self.passport.is_valid(), "Passport is not valid"
