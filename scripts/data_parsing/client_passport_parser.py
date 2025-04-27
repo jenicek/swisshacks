@@ -40,8 +40,5 @@ class PassportParser(ParserClass):
             raise ValueError("Parser not initialized.")
         
         return self.parser.parse(passport_file_path)
-    
-    def is_valid(self) -> bool:
-        return self.parser.is_valid()
 
         
