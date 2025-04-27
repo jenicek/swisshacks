@@ -3,7 +3,7 @@ import logging
 import concurrent.futures
 import storage
 
-from data_parsing.parse_png_vlm import parse_png
+from data_parsing.parse_passport_openai import parse_png
 
 # Set up logging
 logger = logging.getLogger(__name__)
