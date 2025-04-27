@@ -1,7 +1,7 @@
 from openai import AzureOpenAI
 import json
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Dict, Any
 import base64
 import os
 

@@ -28,20 +28,25 @@ def load_client_data(level_dir):
         # Load account data
         with open(os.path.join(level_dir, "account.json"), "r") as f:
             account_data = json.load(f)
+        # account = ClientAccount(account_data)
             
         # Load description data
         with open(os.path.join(level_dir, "description.json"), "r") as f:
             description_data = json.load(f)
+        # description = ClientDescription(description_data)
             
         # Load passport data
         with open(os.path.join(level_dir, "passport.json"), "r") as f:
             passport_data = json.load(f)
+        # passport = ClientPassport(passport_data)
             
         # Load profile data
         with open(os.path.join(level_dir, "profile.json"), "r") as f:
             profile_data = json.load(f)
+        # profile = ClientProfile(profile_data)
             
         # Create ClientData object
+        # TODO: Have to fix this to take classes as args
         return ClientData(
             client_file=level_dir,
             account_form=account_data,

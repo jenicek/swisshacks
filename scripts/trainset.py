@@ -7,7 +7,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.absolute()
 
 # Load .env file from project root
 print(f"Env path: {os.path.join(PROJECT_ROOT, '.env')}")
-load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 import storage
 
 
@@ -17,12 +17,14 @@ random.seed(42)  # Set seed for reproducibility
 
 
 class TrainIterator:
-
     def __init__(self, limit=None, minkey=None, maxkey=None):
-        self.paths = [os.path.join(FOLDER, x, "0", y) \
-                        for x in "01" for y in os.listdir(os.path.join(FOLDER, x, "0")) \
-                        if (maxkey is None or int(y) < maxkey)
-                        and (minkey is None or int(y) >= minkey)]
+        self.paths = [
+            os.path.join(FOLDER, x, "0", y)
+            for x in "01"
+            for y in os.listdir(os.path.join(FOLDER, x, "0"))
+            if (maxkey is None or int(y) < maxkey)
+            and (minkey is None or int(y) >= minkey)
+        ]
         random.shuffle(self.paths)
         self.current_index = 0
         self.predictions = []
@@ -58,9 +60,10 @@ class TrainIterator:
         self.predictions.append(prediction)
 
     def __str__(self):
-        self.accuracy, self.false_positives, self.false_negatives = \
-            evaluate_predictions(self.paths[:len(self.predictions)], self.predictions)
-        return f"Accuracy is {round(100*self.accuracy, 1):.1f}%"
+        self.accuracy, self.false_positives, self.false_negatives = (
+            evaluate_predictions(self.paths[: len(self.predictions)], self.predictions)
+        )
+        return f"Accuracy is {round(100 * self.accuracy, 1):.1f}%"
 
 
 def load_files(directory: str) -> dict:
@@ -70,12 +73,14 @@ def load_files(directory: str) -> dict:
     files = {}
     for filenames in os.listdir(directory):
         for filename in filenames:
-            with open(os.path.join(directory, filename), 'rb') as file:
+            with open(os.path.join(directory, filename), "rb") as file:
                 files[filename] = file.read()
     return files
 
 
-def evaluate_predictions(paths: list[str], predictions: list[bool]) -> tuple[float, list[str], list[str]]:
+def evaluate_predictions(
+    paths: list[str], predictions: list[bool]
+) -> tuple[float, list[str], list[str]]:
     """
     Evaluate the predictions against the groundtruths.
     Returns:
@@ -85,14 +90,16 @@ def evaluate_predictions(paths: list[str], predictions: list[bool]) -> tuple[flo
             - List of false negative paths.
     """
     if len(paths) != len(predictions):
-        raise ValueError(f"Groundtruth and predictions must have the same length: {len(paths)} vs {len(predictions)}")
+        raise ValueError(
+            f"Groundtruth and predictions must have the same length: {len(paths)} vs {len(predictions)}"
+        )
 
     false_negatives = []
     false_positives = []
     true_count = 0
     for path, prediction in zip(paths, predictions):
         # Split on either \ or / depending on the path format
-        path_parts = path.replace('\\', '/').split('/')
+        path_parts = path.replace("\\", "/").split("/")
         gt = {"0": False, "1": True}[path_parts[-3]]
         if gt == prediction:
             true_count += 1
@@ -115,7 +122,7 @@ def upload_dataset(prefix="train/"):
             relative_path = os.path.relpath(file_path, FOLDER)
 
             # Read and upload file using the storage module
-            with open(file_path, 'rb') as handle:
+            with open(file_path, "rb") as handle:
                 storage.store_object(handle.read(), f"{prefix}{relative_path}")
 
             uploaded_files += 1
@@ -140,7 +147,7 @@ def download_dataset(prefix="train/"):
 
     for obj_key in objects:
         # Calculate the local path where the file should be saved
-        relative_path = obj_key[len(prefix):]  # Remove prefix to get relative path
+        relative_path = obj_key[len(prefix) :]  # Remove prefix to get relative path
         local_path = os.path.join(FOLDER, relative_path)
         downloaded_files += 1
 
@@ -154,7 +161,7 @@ def download_dataset(prefix="train/"):
         content = storage.read_object(obj_key)
 
         # Save the file locally
-        with open(local_path, 'wb') as handle:
+        with open(local_path, "wb") as handle:
             handle.write(content)
 
         if downloaded_files % 100 == 0:
