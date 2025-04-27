@@ -1,108 +1,20 @@
 import docx
 import os
-from dataclasses import dataclass, field
-from dataclasses_json import dataclass_json
-from typing import List, Optional
-from datetime import datetime
-
-@dataclass_json
-@dataclass
-class ContactInfo:
-    telephone: Optional[str] = None
-    email: Optional[str] = None
-
-@dataclass_json
-@dataclass
-class PersonalInfo:
-    is_politically_exposed: bool = False
-    marital_status: Optional[str] = None
-    highest_education: Optional[str] = None
-    education_history: Optional[str] = None
-
-@dataclass_json
-@dataclass
-class EmploymentStatus:
-    status_type: Optional[str] = None  # "Employee", "Not employed", "Retired"
-    since: Optional[str] = None
-
-@dataclass_json
-@dataclass
-class Employment:
-    current_status: EmploymentStatus = field(default_factory=EmploymentStatus)
-    employer: Optional[str] = None
-    position: Optional[str] = None
-    annual_income: Optional[str] = None
-    previous_profession: Optional[str] = None
-    is_primary: bool = True
+from client_data.client_profile import ClientProfile, Employment
 
 
-@dataclass_json
-@dataclass
-class WealthInfo:
-    total_wealth_range: Optional[str] = None
-    wealth_sources: List[str] = field(default_factory=list)
-    source_info: List[str] = field(default_factory=list)
-    assets: List[str] = field(default_factory=list)
-
-@dataclass_json
-@dataclass
-class IncomeInfo:
-    total_income_range: Optional[str] = None
-    source_info: Optional[str] = None
-
-@dataclass_json
-@dataclass
-class InvestmentPreferences:
-    type_of_mandate: Optional[str] = None  # Discretionary, Advisory, Execution Only
-    investment_experience: Optional[str] = None  # None, Limited, Good, Extensive
-    investment_horizon: Optional[str] = None  # Short-term, Medium-term, Long-term
-    expected_transactional_behavior: Optional[str] = None  # Low, Medium, High frequency
-    preferred_markets: List[str] = field(default_factory=list)
-
-@dataclass_json
-@dataclass
-class AccountDetails:
-    account_number: Optional[str] = None
-    is_commercial_account: bool = False
-    risk_profile: Optional[str] = None  # Low, Moderate, Considerable, High
-    total_assets: Optional[float] = None
-    transfer_assets: Optional[float] = None
-    investment_preferences: InvestmentPreferences = field(default_factory=InvestmentPreferences)
-
-@dataclass_json
-@dataclass
-class ClientProfile:
-    last_name: Optional[str] = None
-    first_name: Optional[str] = None
-    nationality: Optional[str] = None
-    passport_id: Optional[str] = None
-    id_type: Optional[str] = None
-    id_issue_date: Optional[str] = None
-    id_expiry_date: Optional[str] = None
-    gender: Optional[str] = None
-    country_of_domicile: Optional[str] = None
-    birth_date: Optional[str] = None
-
-    address: Optional[str] = None
-    contact_info: ContactInfo = field(default_factory=ContactInfo)
-    personal_info: PersonalInfo = field(default_factory=PersonalInfo)
-    employment: List[Employment] = field(default_factory=list)
-    wealth_info: WealthInfo = field(default_factory=WealthInfo)
-    income_info: IncomeInfo = field(default_factory=IncomeInfo)
-    account_details: AccountDetails = field(default_factory=AccountDetails)
-
-    # Metadata
-    filename: Optional[str] = None
-    parsed_date: str = field(default_factory=lambda: datetime.now().isoformat())
-
-class DocxParser:
+class ClientProfileParser:
     """Parser for client profile docx files"""
 
     @staticmethod
     def extract_cell_value(row, column_index):
         """Extract cell text value safely"""
         try:
-            return row.cells[column_index].text.strip() if column_index < len(row.cells) else ""
+            return (
+                row.cells[column_index].text.strip()
+                if column_index < len(row.cells)
+                else ""
+            )
         except:
             return ""
 
@@ -207,7 +119,6 @@ class DocxParser:
                     assets[line.split("EUR")[0].strip()] = line.split("EUR")[1].strip()
         return assets
 
-
     @staticmethod
     def get_mandate_type(text):
         """Extract mandate type from checkbox text"""
@@ -241,7 +152,6 @@ class DocxParser:
             return "Long-Term"
         return None
 
-
     @staticmethod
     def extract_preferred_markets(text):
         """Extract preferred markets from checkbox text"""
@@ -265,8 +175,8 @@ class DocxParser:
                 # Identify tables by index based on the analysis
                 if i == 1:  # Basic information table
                     for row in table.rows:
-                        row_label = DocxParser.extract_cell_value(row, 0)
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_label = ClientProfileParser.extract_cell_value(row, 0)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
                         if "Last Name" in row_label:
                             client.last_name = row_value
@@ -287,30 +197,35 @@ class DocxParser:
                         elif "id expiry date" in row_label.lower():
                             client.id_expiry_date = row_value
                         elif "gender" in row_label.lower():
-                            client.gender = DocxParser.get_gender(row_value)
+                            client.gender = ClientProfileParser.get_gender(row_value)
                         elif "country of domicile" in row_label.lower():
                             client.country_of_domicile = row_value
 
-
                 elif i == 3:  # Contact info table
                     for row in table.rows:
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
                         if "Telephone" in row_value:
-                            client.contact_info.telephone = row_value.replace("Telephone", "").strip()
+                            client.contact_info.telephone = row_value.replace(
+                                "Telephone", ""
+                            ).strip()
                         elif "E-Mail" in row_value:
-                            client.contact_info.email = row_value.replace("E-Mail", "").strip()
+                            client.contact_info.email = row_value.replace(
+                                "E-Mail", ""
+                            ).strip()
 
                 elif i == 5:  # PEP status table
-                    row_value = DocxParser.extract_cell_value(table.rows[0], 2)
+                    row_value = ClientProfileParser.extract_cell_value(table.rows[0], 2)
                     client.personal_info.is_politically_exposed = "☒ Yes" in row_value
 
                 elif i == 6:  # Marital status and education
                     for row in table.rows:
-                        row_label = DocxParser.extract_cell_value(row, 0)
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_label = ClientProfileParser.extract_cell_value(row, 0)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
                         if "Marital Status" in row_label:
-                            client.personal_info.marital_status = DocxParser.get_marital_status(row_value)
+                            client.personal_info.marital_status = (
+                                ClientProfileParser.get_marital_status(row_value)
+                            )
                         elif "Highest education" in row_label:
                             client.personal_info.highest_education = row_value
                         elif "Education History" in row_label:
@@ -318,114 +233,161 @@ class DocxParser:
 
                 elif i == 8:  # Employment info - first part
                     for row in table.rows:
-                        row_label = DocxParser.extract_cell_value(row, 0)
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_label = ClientProfileParser.extract_cell_value(row, 0)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
                         if "Current employment and function" in row_label:
                             if "Employee" in row_value:
-                                primary_employment.current_status.status_type = "Employee"
+                                primary_employment.current_status.status_type = (
+                                    "Employee"
+                                )
                                 # Extract the "Since" date
                                 if "Since" in row_value:
-                                    primary_employment.current_status.since = row_value.split("Since")[1].strip()
+                                    primary_employment.current_status.since = (
+                                        row_value.split("Since")[1].strip()
+                                    )
                             elif "Name Employer" in row_value:
-                                primary_employment.employer = row_value.replace("Name Employer", "").strip()
+                                primary_employment.employer = row_value.replace(
+                                    "Name Employer", ""
+                                ).strip()
                             elif "Position" in row_value:
                                 # Extract position and possibly annual income
-                                parts = row_value.replace("Position", "").strip().split("(")
+                                parts = (
+                                    row_value.replace("Position", "").strip().split("(")
+                                )
                                 primary_employment.position = parts[0].strip()
                                 if len(parts) > 1:
-                                    primary_employment.annual_income = parts[1].replace(")", "").strip()
+                                    primary_employment.annual_income = (
+                                        parts[1].replace(")", "").strip()
+                                    )
 
                 elif i == 9:  # Employment status - second part
-                    employment_status_found = False
-
                     for row in table.rows:
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
-                        if "Currently not employed" in row_value and DocxParser.find_checkbox_value(row_value):
-                            employment_status_found = True
-                            primary_employment.current_status.status_type = "Not employed"
+                        if (
+                            "Currently not employed" in row_value
+                            and ClientProfileParser.find_checkbox_value(row_value)
+                        ):
+                            primary_employment.current_status.status_type = (
+                                "Not employed"
+                            )
                             if "Since" in row_value:
                                 since_value = row_value.split("Since")[1].strip()
                                 if since_value:
-                                    primary_employment.current_status.since = since_value
+                                    primary_employment.current_status.since = (
+                                        since_value
+                                    )
 
                         elif "Previous Profession" in row_value:
-                            primary_employment.previous_profession = row_value.replace("Previous Profession:", "").strip()
+                            primary_employment.previous_profession = row_value.replace(
+                                "Previous Profession:", ""
+                            ).strip()
 
-                        elif "Retired" in row_value and DocxParser.find_checkbox_value(row_value):
-                            employment_status_found = True
+                        elif (
+                            "Retired" in row_value
+                            and ClientProfileParser.find_checkbox_value(row_value)
+                        ):
                             primary_employment.current_status.status_type = "Retired"
                             if "Since" in row_value:
                                 since_value = row_value.split("Since")[1].strip()
                                 if since_value:
-                                    primary_employment.current_status.since = since_value
+                                    primary_employment.current_status.since = (
+                                        since_value
+                                    )
 
                     # Add the parsed employment to client profile
-                    if primary_employment.employer or primary_employment.position or primary_employment.current_status.status_type:
+                    if (
+                        primary_employment.employer
+                        or primary_employment.position
+                        or primary_employment.current_status.status_type
+                    ):
                         client.employment.append(primary_employment)
 
                 elif i == 11:  # Wealth info
                     for row in table.rows:
-                        row_label = DocxParser.extract_cell_value(row, 0)
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_label = ClientProfileParser.extract_cell_value(row, 0)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
                         if "Total wealth estimated" in row_label:
-                            client.wealth_info.total_wealth_range = DocxParser.get_wealth_range(row_value)
+                            client.wealth_info.total_wealth_range = (
+                                ClientProfileParser.get_wealth_range(row_value)
+                            )
                         elif "Origin of wealth" in row_label:
-                            client.wealth_info.wealth_sources = DocxParser.extract_wealth_sources(row_label)
+                            client.wealth_info.wealth_sources = (
+                                ClientProfileParser.extract_wealth_sources(row_label)
+                            )
                             if row_value:
                                 client.wealth_info.source_info.append(row_value)
                         elif "estimated assets" in row_label.lower():
-                            client.wealth_info.assets = DocxParser.extract_assets(row_value)
+                            client.wealth_info.assets = (
+                                ClientProfileParser.extract_assets(row_value)
+                            )
                         # print(f"Row label: {row_label}, Row value: {row_value}")
 
                 elif i == 13:  # Income info
                     for row in table.rows:
-                        row_label = DocxParser.extract_cell_value(row, 0)
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_label = ClientProfileParser.extract_cell_value(row, 0)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
                         if "Estimated Total income" in row_label:
-                            client.income_info.total_income_range = DocxParser.get_income_range(row_value)
+                            client.income_info.total_income_range = (
+                                ClientProfileParser.get_income_range(row_value)
+                            )
                         if "Country of main source of income" in row_label:
                             client.income_info.source_info = row_value
 
-
                 elif i == 15:  # Account details and basic investment preferences
                     for row in table.rows:
-                        row_label = DocxParser.extract_cell_value(row, 0)
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_label = ClientProfileParser.extract_cell_value(row, 0)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
                         if "Account Number" in row_label:
                             client.account_details.account_number = row_value
                         elif "Commercial Account" in row_label:
-                            client.account_details.is_commercial_account = "☒ Yes" in row_value
+                            client.account_details.is_commercial_account = (
+                                "☒ Yes" in row_value
+                            )
                         elif "Investment Risk Profile" in row_label:
-                            client.account_details.risk_profile = DocxParser.get_risk_profile(row_value)
+                            client.account_details.risk_profile = (
+                                ClientProfileParser.get_risk_profile(row_value)
+                            )
                         elif "Type of Mandate" in row_label:
-                            client.account_details.investment_preferences.type_of_mandate = DocxParser.get_mandate_type(row_value)
+                            client.account_details.investment_preferences.type_of_mandate = ClientProfileParser.get_mandate_type(
+                                row_value
+                            )
                         elif "Investment Experience" in row_label:
-                            client.account_details.investment_preferences.investment_experience = DocxParser.get_investment_experience(row_value)
+                            client.account_details.investment_preferences.investment_experience = ClientProfileParser.get_investment_experience(
+                                row_value
+                            )
                         elif "Investment Horizon" in row_label:
-                            client.account_details.investment_preferences.investment_horizon = DocxParser.get_investment_horizon(row_value)
+                            client.account_details.investment_preferences.investment_horizon = ClientProfileParser.get_investment_horizon(
+                                row_value
+                            )
                         elif "Expected Transactional Behavior" in row_label:
                             client.account_details.investment_preferences.expected_transactional_behavior = row_value
                         elif "Preferred Markets" in row_label:
-                            client.account_details.investment_preferences.preferred_markets = DocxParser.extract_preferred_markets(row_value)
+                            client.account_details.investment_preferences.preferred_markets = ClientProfileParser.extract_preferred_markets(
+                                row_value
+                            )
 
                 elif i == 17:  # Assets info
                     for row in table.rows:
-                        row_label = DocxParser.extract_cell_value(row, 0)
-                        row_value = DocxParser.extract_cell_value(row, 2)
+                        row_label = ClientProfileParser.extract_cell_value(row, 0)
+                        row_value = ClientProfileParser.extract_cell_value(row, 2)
 
                         if "Total Asset Under Management" in row_label:
                             try:
-                                client.account_details.total_assets = float(row_value.replace(",", ""))
+                                client.account_details.total_assets = float(
+                                    row_value.replace(",", "")
+                                )
                             except ValueError:
                                 client.account_details.total_assets = row_value
                         elif "Asset Under Management to transfer" in row_label:
                             try:
-                                client.account_details.transfer_assets = float(row_value.replace(",", ""))
+                                client.account_details.transfer_assets = float(
+                                    row_value.replace(",", "")
+                                )
                             except ValueError:
                                 client.account_details.transfer_assets = row_value
 
@@ -434,7 +396,8 @@ class DocxParser:
 
         return client
 
-def parse_docx_to_json(docx_file_path, output_json_path=None):
+
+def parse_docx_client_profile_to_json(docx_file_path, output_json_path=None):
     """
     Parse a docx file to a ClientProfile object and optionally save as JSON
 
@@ -445,19 +408,23 @@ def parse_docx_to_json(docx_file_path, output_json_path=None):
     Returns:
         JSON string if output_json_path is None, otherwise None
     """
-    client_profile = DocxParser.parse_docx_file(docx_file_path)
+    client_profile = ClientProfileParser.parse_docx_file(docx_file_path)
 
     # Convert to JSON
     json_data = client_profile.to_json(indent=2, ensure_ascii=False)
 
     # Save to file if path provided
     if output_json_path:
-        with open(output_json_path, 'w', encoding='utf-8') as f:
+        with open(output_json_path, "w", encoding="utf-8") as f:
             f.write(json_data)
     return json_data
+
 
 if __name__ == "__main__":
     # Example usage:
     # For single file
-    json_data = parse_docx_to_json("C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile.docx", "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile_output.json")
-    # print("JSON data saved to profile_output.json")
+    json_data = parse_docx_client_profile_to_json(
+        "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile.docx",
+        "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile_output.json",
+    )
+    print("JSON data saved to profile_output.json")
