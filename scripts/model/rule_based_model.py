@@ -220,28 +220,28 @@ def flag_inconsistent_name(client: ClientData):
     """
 
     profile_last_name: str = remove_accents(
-        client.client_profile.get("last_name").lower()
+        client.client_profile.last_name.lower()
     )
     profile_given_name: str = remove_accents(
-        client.client_profile.get("first_name").lower()
+        client.client_profile.first_name.lower()
     )
     profile_full_name: str = remove_accents(
         " ".join([profile_given_name, profile_last_name]).lower().strip()
     )
 
     account_account_name: str = remove_accents(
-        client.account_form.get("account_name").lower()
+        client.account_form.account_name.lower()
     )
     account_holder_name: str = remove_accents(
-        client.account_form.get("account_holder_name").lower()
+        client.account_form.account_holder_name.lower()
     )
     account_holder_surname: str = remove_accents(
-        client.account_form.get("account_holder_surname").lower()
+        client.account_form.account_holder_surname.lower()
     )
-    account_name: str = remove_accents(client.account_form.get("name").lower())
+    account_name: str = remove_accents(client.account_form.name.lower())
 
-    passport_last_name: str = remove_accents(client.passport.get("last_name").lower())
-    passport_given_name: str = remove_accents(client.passport.get("given_name").lower())
+    passport_last_name: str = remove_accents(client.passport.last_name.lower())
+    passport_given_name: str = remove_accents(client.passport.given_name.lower())
 
     # account.json data consistency
     if account_account_name != account_name:
