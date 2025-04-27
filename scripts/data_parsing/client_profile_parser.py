@@ -1,5 +1,6 @@
 import docx
 import logging
+import argparse  # Add import for argument parsing
 from client_data.client_profile import (
     ClientProfile,
     Employment,
@@ -456,11 +457,23 @@ class ClientProfileParser:
 
 
 if __name__ == "__main__":
-    # Example usage:
-    input_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile.docx"
-    output_json_path = (
-        "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile_output.json"
-    )
+    # Set default paths
+    default_input_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile.docx"
+    default_output_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\profile_output.json"
+    
+    # Setup argument parser
+    parser = argparse.ArgumentParser(description='Parse client profile document and convert to JSON')
+    parser.add_argument('--input', '-i', 
+                        default=default_input_path,
+                        help='Path to the input profile DOCX file')
+    parser.add_argument('--output', '-o', 
+                        default=default_output_path,
+                        help='Path to save the output JSON file')
+    
+    # Parse arguments
+    args = parser.parse_args()
+    input_path = args.input
+    output_json_path = args.output
 
     client_profile = ClientProfileParser.parse(input_path)
 

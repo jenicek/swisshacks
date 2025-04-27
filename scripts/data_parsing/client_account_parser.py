@@ -1,4 +1,5 @@
 import re
+import argparse
 from io import BytesIO
 from client_data.client_account import (
     ClientAccount,
@@ -312,8 +313,33 @@ class ClientAccountParser:
 
 if __name__ == "__main__":
     # Example usage:
-    input_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\account.pdf"
-    output_json_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\account.json"
+    # Set default paths
+    default_input_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\account.pdf"
+    default_output_path = (
+        "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\account.json"
+    )
+
+    # Setup argument parser
+    parser = argparse.ArgumentParser(
+        description="Parse client account form and convert to JSON"
+    )
+    parser.add_argument(
+        "--input",
+        "-i",
+        default=default_input_path,
+        help="Path to the input account form pdf file",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=default_output_path,
+        help="Path to save the output JSON file",
+    )
+
+    # Parse arguments
+    args = parser.parse_args()
+    input_path = args.input
+    output_json_path = args.output
 
     client_account = ClientAccountParser.parse(input_path)
 

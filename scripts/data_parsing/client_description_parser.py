@@ -1,5 +1,6 @@
 import re
 import os
+import argparse  # Add import for argument parsing
 from client_data.client_description import ClientDescription
 
 
@@ -72,9 +73,23 @@ class ClientDescriptionParser:
 
 
 if __name__ == "__main__":
-    # Example usage:
-    input_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\description.txt"
-    output_json_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\description.json"
+    # Set default paths
+    default_input_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\description.txt"
+    default_output_path = "C:\\Users\\jekatrinaj\\swisshacks\\data\\level_5\\description.json"
+    
+    # Setup argument parser
+    parser = argparse.ArgumentParser(description='Parse client description text and convert to JSON')
+    parser.add_argument('--input', '-i', 
+                        default=default_input_path,
+                        help='Path to the input description text file')
+    parser.add_argument('--output', '-o', 
+                        default=default_output_path,
+                        help='Path to save the output JSON file')
+    
+    # Parse arguments
+    args = parser.parse_args()
+    input_path = args.input
+    output_json_path = args.output
 
     client_description = ClientDescriptionParser.parse(input_path)
 
