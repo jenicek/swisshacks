@@ -246,6 +246,6 @@ def eval_on_trainset():
 
 
 if __name__ == "__main__":
-    # run_game()
-    run_game_continuously()
+    run_game()
+    # run_game_continuously()
     # eval_on_trainset()

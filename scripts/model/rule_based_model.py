@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from client_data.client_data import ClientData
 import re
 import os
@@ -11,6 +10,7 @@ from collections import defaultdict
 import pycountry
 from openai import AzureOpenAI
 import json
+from model.base_predictor import BasePredictor
 
 # Configure logging
 logging.basicConfig(
@@ -28,23 +28,17 @@ logger = logging.getLogger("validation")
 #     only_ascii = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
 #     return only_ascii
 
-def remove_accents(input_str):
+
+def remove_accents(input_str) -> str:
     # Normalize to NFKD form and encode to ASCII bytes, ignoring non-ASCII chars
     normalized = unicodedata.normalize("NFKD", input_str)
     ascii_bytes = normalized.encode("ASCII", "ignore")
     return ascii_bytes.decode("ASCII")
 
-class Model(ABC):
-    @abstractmethod
-    def predict(self, client: ClientData) -> int:
-        pass
 
-
-class SimpleModel(Model):
+class SimpleModel(BasePredictor):
     def predict(self, client: ClientData) -> int:
-        if flag_missing_values(client):
-            print("Missing values")
-            return 0
+        # Missing value check is already done in the client_data class
         if flag_verify_email(client):
             print("Email mismatch")
             return 0
@@ -56,7 +50,6 @@ class SimpleModel(Model):
             return 0
         if flag_inconsistent_name(client):
             return 0
-        # TODO: HREER!
         if flag_passport(client):
             print("Passport mismatch")
             return 0
@@ -81,23 +74,25 @@ class SimpleModel(Model):
         if flat_date_consistencies(client):
             print("Date inconsistencies detected")
             return 0
-        # New
         if flag_description(client):
             print("Description mismatch")
             return 0
         if flag_passport_country_code(client):
             print("Passport country code mismatch")
             return 0
-        return 1
+        # If all checks pass, return 1
+        return 1 
 
 
-def flag_gender(client: ClientData):
-    if client.client_profile["gender"][0] != client.passport["gender"]:
+def flag_gender(client: ClientData) -> bool:
+    if client.client_profile.gender[0] != client.passport.gender:
         return True
     return False
-def flag_passport_country_code(client: ClientData):
-    passport_country_code = client.passport["country_code"]
-    passport_country_name = client.passport["country"]
+
+
+def flag_passport_country_code(client: ClientData) -> bool:
+    passport_country_code = client.passport.country_code
+    passport_country_name = client.passport.country
 
     if len(passport_country_code) != 3:
         print("Passport country code is incorrect!")
@@ -105,106 +100,73 @@ def flag_passport_country_code(client: ClientData):
 
     pycntry_country_code = pycountry.countries.get(alpha_3=passport_country_code)
     if not pycntry_country_code:
-        print(f"Country code {passport_country_code} is not valid!")
+        print(f"Country code {passport_country_code} is not valid.")
         return True
 
     pycountry_country_fz_name = pycountry.countries.search_fuzzy(passport_country_name)
 
     if pycountry_country_fz_name:
         if pycountry_country_fz_name[0] != pycntry_country_code:
-            print(f"Country name {passport_country_name} does not match country code {passport_country_code}")
+            print(
+                f"Country name {passport_country_name} does not match country code {passport_country_code}"
+            )
             return True
 
     return False
 
-def flag_missing_values(client: ClientData):
-    NULLABLE_FIELDS = (
-        "other_ccy",
-        "employer",
-        "position",
-        "annual_income",
-        "previous_profession",
-        "is_primary",
-        "source_info",
-        "account_number",
-        "expected_transactional_behavior",
-    )
 
-    for data in (
-        client.client_profile,
-        client.client_description,
-        client.passport,
-        client.account_form,
-    ):
-        for path, value in data.items():
-            if isinstance(path, str):
-                path = path.lower()
-                if path.lower() in NULLABLE_FIELDS:
-                    continue
-            if isinstance(value, dict):
-                for key in value.keys():
-                    if isinstance(key, str):
-                        key = key.lower()
-                        if key.lower() in NULLABLE_FIELDS:
-                            continue
-            if isinstance(value, str) and value is None or value == "":
-                return True
-    return False
-
-
-def flag_verify_email(client: ClientData):
+def flag_verify_email(client: ClientData) -> bool:
     email_pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
 
-    if client.account_form["email"] != client.client_profile["contact_info"]["email"]:
+    # Check if the email in the account form matches the one in the client profile
+    if client.account_form.email != client.client_profile.contact_info.email:
         return True
-
-    if not re.match(email_pattern, client.account_form["email"]):
+    if not re.match(email_pattern, client.account_form.email):
         return True
-
     return False
 
 
-def flag_phone(client: ClientData):
-    phone_number = client.account_form["phone_number"].replace(" ", "")
+def flag_phone(client: ClientData) -> bool:
+    phone_number = client.account_form.phone_number.replace(" ", "")
 
-    if phone_number != client.client_profile["contact_info"]["telephone"].replace(
-        " ", ""
-    ):
+    if phone_number != client.client_profile.contact_info.telephone.replace(" ", ""):
         return True
-
+    # Check if the phone number contains only digits and optional leading '+'
     if not re.match("^\+?\d+$", phone_number):
         return True
-
+    # Check if the phone number is too long or too short
     if len(phone_number) > 15 or len(phone_number) < 8:
         return True
-
     return False
 
 
-def flag_country(client: ClientData):
-    if client.account_form["country"] != client.client_profile["country_of_domicile"]:
+def flag_country(client: ClientData) -> bool:
+    if client.account_form.country != client.client_profile.country_of_domicile:
         return True
     return False
 
-def flag_nationality(client: ClientData):
 
-    passport_nationality = client.passport["nationality"].lower()
-    profile_nationality = client.client_profile["nationality"].lower()
+def flag_nationality(client: ClientData) -> bool:
+    passport_nationality = client.passport.nationality.lower()
+    profile_nationality = client.client_profile.nationality.lower()
 
     if len(passport_nationality) == len(profile_nationality):
         if passport_nationality != profile_nationality:
-            print(f"Client nationality mismatch: {client.passport['nationality']} != {client.client_profile['nationality']}")
+            print(
+                f"Client nationality mismatch: {client.passport.nationality} != {client.client_profile.nationality}"
+            )
             return True
     else:
         if profile_nationality not in passport_nationality:
-            print(f"Profile nationality {profile_nationality} does not match {passport_nationality  }")
+            print(
+                f"Profile nationality {profile_nationality} does not match {passport_nationality}"
+            )
             return True
     return False
 
+
 def flag_address(client: ClientData):
-    address = client.client_profile[
-        "address"
-    ]  # i.e., "Place de la Concorde 17, 26627 Toulon"
+    address = client.client_profile.address  # i.e., "Place de la Concorde 17, 26627 Toulon"
     street, street_number, postal_code, city = "", "", "", ""
     if address:
         address_parts = address.split(",")
@@ -240,13 +202,13 @@ def flag_address(client: ClientData):
     #     f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'"
     # )
 
-    if remove_accents(street) != remove_accents(client.account_form["street_name"]):
+    if remove_accents(street) != remove_accents(client.account_form.street_name):
         return True
-    if street_number != client.account_form["building_number"]:
+    if street_number != client.account_form.building_number:
         return True
-    if postal_code != client.account_form["postal_code"]:
+    if postal_code != client.account_form.postal_code:
         return True
-    if remove_accents(city) != remove_accents(client.account_form["city"]):
+    if remove_accents(city) != remove_accents(client.account_form.city):
         return True
 
     return False
@@ -280,7 +242,6 @@ def flag_inconsistent_name(client: ClientData):
 
     passport_last_name: str = remove_accents(client.passport.get("last_name").lower())
     passport_given_name: str = remove_accents(client.passport.get("given_name").lower())
-
 
     # account.json data consistency
     if account_account_name != account_name:
@@ -319,8 +280,8 @@ def flag_inconsistent_name(client: ClientData):
 
 def simple_mrz(passport_data: dict) -> Tuple[str, str]:
     # Clean up passport data to remove accents and special characters
-    last_name = remove_accents(passport_data["last_name"])
-    first_name = remove_accents(passport_data["given_name"])
+    last_name = remove_accents(passport_data.last_name)
+    first_name = remove_accents(passport_data.given_name)
 
     names = first_name.split(" ")  # Take only the first part of the name
     first_name = names[0].strip()
@@ -330,100 +291,101 @@ def simple_mrz(passport_data: dict) -> Tuple[str, str]:
 
     line1 = [
         "P",
-        f"{passport_data['country_code']}{last_name.upper()}",
+        f"{passport_data.country_code}{last_name.upper()}",
         first_name.upper(),
     ]
     if middle_name != "":
         line1.append(middle_name.upper())
 
-    birth_date = datetime.strptime(passport_data["birth_date"], "%Y-%m-%d").strftime(
+    birth_date = datetime.strptime(passport_data.birth_date, "%Y-%m-%d").strftime(
         "%y%m%d"
     )
-    line2 = f"{passport_data['passport_number'].upper()}{passport_data['country_code']}{birth_date}"
+    line2 = f"{passport_data.passport_number.upper()}{passport_data.country_code}{birth_date}"
     return [remove_accents(l1.upper()) for l1 in line1], line2.upper()
 
 
 def flag_passport(client: ClientData):
     if not (
-        client.client_profile["passport_id"]
-        == client.account_form["passport_number"]
-        == client.passport["passport_number"]
+        client.client_profile.passport_id
+        == client.account_form.passport_number
+        == client.passport.passport_number
     ):
-        print(f"Passport numbers are not matching: {client.client_profile['passport_id']} != {client.account_form['passport_number']} != {client.passport['passport_number']}")
+        print(
+            f"Passport numbers are not matching: {client.client_profile.passport_id} != {client.account_form.passport_number} != {client.passport.passport_number}"
+        )
         return True
 
-    if len(client.passport["passport_mrz"]) != 2:
+    if len(client.passport.passport_mrz) != 2:
         print("MRZ not in prescribed format")
         return True
 
     mrz_line1, mrz_line2 = simple_mrz(client.passport)
 
-    passport_line1, passport_line2 = client.passport["passport_mrz"]
+    passport_line1, passport_line2 = client.passport.passport_mrz
     passport_line1 = [remove_accents(s.upper()) for s in passport_line1.split("<") if s]
 
-    if textdistance.levenshtein(" ".join(mrz_line1), " ".join(passport_line1)) > 1 \
-            or textdistance.levenshtein(mrz_line2[:18], passport_line2[:18]) > 2:
+    if (
+        textdistance.levenshtein(" ".join(mrz_line1), " ".join(passport_line1)) > 1
+        or textdistance.levenshtein(mrz_line2[:18], passport_line2[:18]) > 2
+    ):
         print(mrz_line1, passport_line1)
         print(mrz_line2[:18], passport_line2[:18])
         return True
 
-    if not re.match("\w\w\d{7}", client.passport["passport_number"]):
-        return True
-
-    return False
-
-def flag_passport_2(client: ClientData):
-    if not (
-        client.client_profile["passport_id"]
-        == client.account_form["passport_number"]
-        == client.passport["passport_number"]
-    ):
-        return True
-
-    mrz_line1, mrz_line2 = simple_mrz(client.passport)
-    joint_mrz = "".join([mrz_line1, mrz_line2])
-
-    passport_mrz = "".join(client.passport["passport_mrz"])
-    passport_mrz = [remove_accents(s.upper()) for s in passport_mrz.split("<") if s]
-
-
-    if textdistance.levenshtein(joint_mrz, "".join(passport_mrz)) > 3:
-        print(joint_mrz, passport_mrz)
-        return True
-
-    if not re.match("\w\w\d{7}", client.passport["passport_number"]):
+    if not re.match("\w\w\d{7}", client.passport.passport_number):
         return True
 
     return False
 
 def flag_birth_date(client: ClientData):
     # Check if birth dates match between client profile and passport
-    if client.client_profile["birth_date"] != client.passport["birth_date"]:
-        print(f"Birth date mismatch: {client.client_profile['birth_date']} != {client.passport['birth_date']}")
+    if client.client_profile.birth_date != client.passport.birth_date:
+        print(
+            f"Birth date mismatch: {client.client_profile.birth_date} != {client.passport.birth_date}"
+        )
         return True
-    
-    passport_issue_date = client.passport["passport_issue_date"]
-    passport_expiry_date = client.passport["passport_expiry_date"]
-    
-    if client.client_profile["id_type"] == "passport":
-        if passport_issue_date!= client.client_profile["id_issue_date"]:
-            print(f"Passport issue date mismatch: {passport_issue_date} != {client.client_profile['id_issue_date']}")
+
+    passport_issue_date = client.passport.passport_issue_date
+    passport_expiry_date = client.passport.passport_expiry_date
+
+    if client.client_profile.id_type == "passport":
+        if passport_issue_date != client.client_profile.id_issue_date:
+            print(
+                f"Passport issue date mismatch: {passport_issue_date} != {client.client_profile.id_issue_date}"
+            )
             return True
-    
-        if passport_expiry_date != client.client_profile["id_expiry_date"]:
-            print(f"Passport expiry date mismatch: {passport_expiry_date} != {client.client_profile['id_expiry_date']}")
+
+        if passport_expiry_date != client.client_profile.id_expiry_date:
+            print(
+                f"Passport expiry date mismatch: {passport_expiry_date} != {client.client_profile.id_expiry_date}"
+            )
             return True
-        
+
     today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
-    
-    if datetime.strptime(passport_issue_date, "%Y-%m-%d").date() > datetime.strptime(passport_expiry_date, "%Y-%m-%d").date():
-        print(f"Passport issue date {passport_issue_date} is after expiry date {passport_expiry_date}")
+
+    if (
+        datetime.strptime(passport_issue_date, "%Y-%m-%d").date()
+        > datetime.strptime(passport_expiry_date, "%Y-%m-%d").date()
+    ):
+        print(
+            f"Passport issue date {passport_issue_date} is after expiry date {passport_expiry_date}"
+        )
         return True
-    if datetime.strptime(passport_issue_date, "%Y-%m-%d").date() < datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date():
-        print(f"Passport issue date {passport_issue_date} is before birth date {client.client_profile['birth_date']}")
+    if (
+        datetime.strptime(passport_issue_date, "%Y-%m-%d").date()
+        < datetime.strptime(client.client_profile.birth_date, "%Y-%m-%d").date()
+    ):
+        print(
+            f"Passport issue date {passport_issue_date} is before birth date {client.client_profile.birth_date}"
+        )
         return True
-    if datetime.strptime(passport_expiry_date, "%Y-%m-%d").date() < datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date():
-        print(f"Passport expiry date {passport_expiry_date} is before birth date {client.client_profile['birth_date']}")
+    if (
+        datetime.strptime(passport_expiry_date, "%Y-%m-%d").date()
+        < datetime.strptime(client.client_profile.birth_date, "%Y-%m-%d").date()
+    ):
+        print(
+            f"Passport expiry date {passport_expiry_date} is before birth date {client.client_profile.birth_date}"
+        )
         return True
     if datetime.strptime(passport_issue_date, "%Y-%m-%d").date() > today:
         print(f"Passport issue date {passport_issue_date} is in the future")
@@ -433,13 +395,19 @@ def flag_birth_date(client: ClientData):
         return True
 
     try:
-        birth_date = datetime.strptime(client.client_profile["birth_date"], "%Y-%m-%d").date()
+        birth_date = datetime.strptime(
+            client.client_profile.birth_date, "%Y-%m-%d"
+        ).date()
 
         # Calculate age
         if birth_date > today:
             logger.info("Birth date is in the future")
             return True
-        age = today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        age = (
+            today.year
+            - birth_date.year
+            - ((today.month, today.day) < (birth_date.month, birth_date.day))
+        )
 
         # Check if age is reasonable (typically 18-120 years for banking clients)
         if age < 18:
@@ -450,21 +418,24 @@ def flag_birth_date(client: ClientData):
             return True
     except ValueError:
         # If there's an issue parsing the date
-        logger.error(f"Invalid birth date format: {client.client_profile['birth_date']}")
+        logger.error(
+            f"Invalid birth date format: {client.client_profile.birth_date}"
+        )
         return True
 
     return False
+
 
 def find_redundant_sentences(data_dict):
     sentence_map = defaultdict(set)
 
     # Helper: normalize a sentence
     def clean_sentence(sentence):
-        return re.sub(r'\s+', ' ', sentence.strip()).rstrip('.')
+        return re.sub(r"\s+", " ", sentence.strip()).rstrip(".")
 
     # Step 1: Split and map sentences to fields
     for field, content in data_dict.items():
-        sentences = re.split(r'(?<=[.!?])\s+', content)
+        sentences = re.split(r"(?<=[.!?])\s+", content)
         for raw_sentence in sentences:
             sentence = clean_sentence(raw_sentence)
             if sentence:
@@ -472,9 +443,7 @@ def find_redundant_sentences(data_dict):
 
     # Step 2: Find duplicates (appearing in >1 field)
     redundant_sentences = {
-        sentence: fields
-        for sentence, fields in sentence_map.items()
-        if len(fields) > 1
+        sentence: fields for sentence, fields in sentence_map.items() if len(fields) > 1
     }
 
     return redundant_sentences
@@ -492,13 +461,13 @@ def flat_date_consistencies(client: ClientData):
 
     today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
     birth_date = datetime.strptime(
-        client.client_profile["birth_date"], "%Y-%m-%d"
+        client.client_profile.birth_date, "%Y-%m-%d"
     ).date()
     issue_date = datetime.strptime(
-        client.client_profile["id_issue_date"], "%Y-%m-%d"
+        client.client_profile.id_issue_date, "%Y-%m-%d"
     ).date()
     expiry_date = datetime.strptime(
-        client.client_profile["id_expiry_date"], "%Y-%m-%d"
+        client.client_profile.id_expiry_date, "%Y-%m-%d"
     ).date()
 
     # TODO: validate dates from key "employment"
@@ -512,44 +481,14 @@ def flat_date_consistencies(client: ClientData):
     return False
 
 
-
-# def flag_dates(client: ClientData):
-#     passport_issue_date = client.client_profile["passport_issue_date"]
-#     if passport_issue_date != client.passport["passport_issue_date"]:
-#         return True
-
-#     date_pattern = r"^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
-#     if not re.match(date_pattern, passport_issue_date):
-#         return True
-
-#     if passport_issue_date < client.client_profile["birth_date"]:
-#         return True
-
-#     if passport_issue_date > TODAY:
-#         return True
-
-#     if client.client_profile["birth_date"] > TODAY:
-#         return True
-
-#     if (len(client.client_profile["higher_education"]) > 0) and client.client_profile[
-#         "higher_education"
-#     ][0]["graduation_year"] < client.client_profile["secondary_school"][
-#         "graduation_year"
-#     ] + 2:
-#         return True
-
-#     return False
-
-
 # TODO: check correct dates (i.e., work since <today, graduation_year < today)
-# TODO: Check valid passport range
 # TODO: Check passport dates are reasonable; (not too far in the past, not too far in the future)
 # TODO: Check valid passport
-# TODO: Take a list of country codes, country names and check we have correct stuff in passport - https://www.kaggle.com/datasets/phanee16/currency-and-country-code-mapping
-        
+
+
 def flag_wealth(client: ClientData):
-    total_assets = client.client_profile["account_details"]["total_assets"]
-    transfer_assets = client.client_profile["account_details"]["transfer_assets"]
+    total_assets = client.client_profile.account_details.total_assets
+    transfer_assets = client.client_profile.account_details.transfer_assets
 
     if total_assets < 0 or transfer_assets < 0:
         print("Negative assets detected")
@@ -559,35 +498,46 @@ def flag_wealth(client: ClientData):
         return True
 
     combined_assets = 0
-    for _, value in client.client_profile["wealth_info"]["assets"].items():
+    for _, value in client.client_profile.wealth_info.assets.items():
         value = int(value)
         if value < 0:
             return True
         combined_assets += value
 
     if combined_assets > total_assets:
-        print(f"Combined assets exceed total assets: {combined_assets} > {total_assets}")
+        print(
+            f"Combined assets exceed total assets: {combined_assets} > {total_assets}"
+        )
         return True
 
-    total_wealth_range = client.client_profile["wealth_info"]["total_wealth_range"]
+    total_wealth_range = client.client_profile.wealth_info.total_wealth_range
     # "< EUR 1.5m", "EUR 1.5m-5m", "EUR 5m-10m", "EUR 10m.-20m", "EUR 20m.-50m", "> EUR 50m"
 
     # Check if the total assets fall within the specified range
     total_wealth_range = total_wealth_range.replace(" ", "")
     if total_wealth_range == "< EUR 1.5m" and combined_assets > 1_500_000:
         return True
-    elif total_wealth_range == "EUR 1.5m-5m" and (1_500_000 > combined_assets or combined_assets > 5_000_000):
+    elif total_wealth_range == "EUR 1.5m-5m" and (
+        1_500_000 > combined_assets or combined_assets > 5_000_000
+    ):
         return True
-    elif total_wealth_range == "EUR 5m-10m" and (5_000_000 > combined_assets or combined_assets > 10_000_000):
+    elif total_wealth_range == "EUR 5m-10m" and (
+        5_000_000 > combined_assets or combined_assets > 10_000_000
+    ):
         return True
-    elif total_wealth_range == "EUR 10m.-20m" and (10_000_000 > combined_assets or combined_assets > 20_000_000):
+    elif total_wealth_range == "EUR 10m.-20m" and (
+        10_000_000 > combined_assets or combined_assets > 20_000_000
+    ):
         return True
-    elif total_wealth_range == "EUR 20m.-50m" and (20_000_000 > combined_assets or combined_assets > 50_000_000):
+    elif total_wealth_range == "EUR 20m.-50m" and (
+        20_000_000 > combined_assets or combined_assets > 50_000_000
+    ):
         return True
     elif total_wealth_range == "> EUR 50m" and combined_assets <= 50_000_000:
         return True
 
     return False
+
 
 prompt = """
 I have this json:
@@ -621,22 +571,24 @@ fill these keys:
  output should be a valid json with the given template. just fill the values, nothing else. 
 """
 
+
 def flag_compare_age(gpt_age, client: ClientData):
-    if gpt_age in (None, "", 'none', 'None'):
+    if gpt_age in (None, "", "none", "None"):
         return False
     gpt_age = int(gpt_age)
     today = date.today()
 
     birth_date = datetime.strptime(
-        client.client_profile["birth_date"], "%Y-%m-%d"
+        client.client_profile.birth_date, "%Y-%m-%d"
     ).date()
 
     birthday_age = today.year - birth_date.year
 
-    return abs(gpt_age-birthday_age) > 2
+    return abs(gpt_age - birthday_age) > 2
+
 
 def simple_compare(gpt_value, client_value):
-    if gpt_value in (None, "", 'none', 'None'):
+    if gpt_value in (None, "", "none", "None"):
         return False
     gpt_value = str(gpt_value).lower()
     client_value = str(client_value).lower()
@@ -645,7 +597,6 @@ def simple_compare(gpt_value, client_value):
 
 
 def flag_description(client: ClientData):
-
     openai_client = AzureOpenAI(
         api_key=os.environ.get("AZURE_OPENAI_API_KEY"),
         api_version="2025-03-01-preview",
@@ -654,7 +605,12 @@ def flag_description(client: ClientData):
 
     response = openai_client.chat.completions.create(
         model="gpt-4o",
-        messages=[{"role": "user", "content": prompt.format(client_data=client.client_description)}],
+        messages=[
+            {
+                "role": "user",
+                "content": prompt.format(client_data=client.client_description),
+            }
+        ],
         temperature=0.1,
         response_format={"type": "json_object"},
     )
@@ -662,43 +618,58 @@ def flag_description(client: ClientData):
         response_data = json.loads(response.choices[0].message.content)
     except json.decoder.JSONDecodeError:
         return False
-    
+
     print(response_data)
 
-    # try:
-    if flag_compare_age(response_data.get('age'), client):
-        print(f"age mismatch: {response_data.get('age')} != {client.client_profile['birth_date']}")
+    if flag_compare_age(response_data.get("age"), client):
+        print(
+            f"age mismatch: {response_data.get('age')} != {client.client_profile.birth_date}"
+        )
         return True
-    
-    if simple_compare(response_data.get('marital_status'), client.client_profile['personal_info']['marital_status']):
-        print(f"marital status mismatch: {response_data.get('marital_status')} != {client.client_profile['personal_info']['marital_status']}")
+
+    if simple_compare(
+        response_data.get("marital_status"),
+        client.client_profile.personal_info.marital_status,
+    ):
+        print(
+            f"marital status mismatch: {response_data.get('marital_status')} != {client.client_profile.personal_info.marital_status}"
+        )
         return True
-    
-    if simple_compare(response_data.get('company'), client.client_profile["employment"][0]['employer']):
-        print(f"company mismatch: {response_data.get('company')} != {client.client_profile['employment'][0]['employer']}")
+
+    if simple_compare(
+        response_data.get("company"), client.client_profile.employment[0]["employer"]
+    ):
+        print(
+            f"company mismatch: {response_data.get('company')} != {client.client_profile.employment[0]['employer']}"
+        )
         return True
-    
-    if simple_compare(response_data.get('position'), client.client_profile["employment"][0]['position']):
-        print(f"position mismatch: {response_data.get('position')} != {client.client_profile['employment'][0]['position']}")
+
+    if simple_compare(
+        response_data.get("position"),
+        client.client_profile.employment[0]["position"],
+    ):
+        print(
+            f"position mismatch: {response_data.get('position')} != {client.client_profile.employment[0]['position']}"
+        )
         return True
-    
-    inheritance = response_data.get('inheritance')
+
+    inheritance = response_data.get("inheritance")
     if isinstance(inheritance, str):
         inheritance = inheritance.lower() == "true"
 
-    wealth_sources = client.client_profile["wealth_info"]["wealth_sources"]
+    wealth_sources = client.client_profile.wealth_info.wealth_sources
     inherit_profile = "Inheritance" in wealth_sources
-    if inheritance != inherit_profile and response_data.get('inherited_from'):
+    if inheritance != inherit_profile and response_data.get("inherited_from"):
         print(f"inheritance mismatch: {inheritance} != {inherit_profile}")
         return True
-    
+
     # Inheritance source
     if inheritance:
-        inh_from = response_data.get('inherited_from')
-        inh_year = response_data.get('inheritment_year')
-        inh_pos = response_data.get('occupation_of_the_person_from_whom_inherited')
+        inh_from = response_data.get("inherited_from")
+        inh_year = response_data.get("inheritment_year")
+        inh_pos = response_data.get("occupation_of_the_person_from_whom_inherited")
 
-        inh_info = client.client_profile["wealth_info"]["source_info"]
+        inh_info = client.client_profile.wealth_info.source_info
         if inh_from and inh_from not in inh_info[0]:
             print(f"inheritance source mismatch: {inh_from} != {inh_info}")
             return True
@@ -713,12 +684,8 @@ def flag_description(client: ClientData):
         # education = response_data.get('education')
 
         # if education:
-        #     edu_prof = client.client_profile["personal_info"]["education_history"]
-        #     if 
-
-
-        # if flag_real_estate_details(response_data, client):
-        #     return True
+        #     edu_prof = client.client_profile.personal_info.education_history
+        #     
 
     # except Exception as e:
     #     logger.error(f"Error processing response: {e}")
