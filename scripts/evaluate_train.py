@@ -7,7 +7,7 @@ from client_data.client_data import ClientData
 from model.rule_based_model import SimpleModel
 
 
-class TestStistics:
+class TestStatistics:
     def __init__(self):  
         self.false_positive:int = 0
         self.false_negative:int = 0
@@ -74,7 +74,7 @@ class TestStistics:
 def eval_on_trainset():
     trainiter = trainset.TrainIterator()
     rule_based_model = SimpleModel()
-    stats = TestStistics()
+    stats = TestStatistics()
 
     try:
         for path in trainiter:
