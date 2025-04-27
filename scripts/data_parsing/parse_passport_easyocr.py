@@ -10,7 +10,7 @@ import cv2  # OpenCV for visualization
 from PIL import Image
 
 # local imports
-from passport_format import PassportDataclass
+from scripts.client_data.client_passport import PassportDataclass
 
 
 FIELD_BB ={

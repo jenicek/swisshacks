@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from client_data.client_profile import ClientProfile
 from client_data.client_account import ClientAccount
 from client_data.client_description import ClientDescription
+from client_data.client_passport import ClientPassport
 
 PROJECT_DIR = Path(__file__).parent.parent.parent.resolve().absolute()
 
@@ -22,7 +23,7 @@ class ClientData:
     # Parsed client profile data (from docx).
     client_profile: ClientProfile
     # Parsed passport data (from png).
-    passport: dict
+    passport: ClientPassport
     # Label (0 or 1) corresponding to the ground truth information used
     # for training. May be none.
     label: int | None = None
