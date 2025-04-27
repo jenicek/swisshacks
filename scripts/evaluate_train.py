@@ -88,9 +88,11 @@ def eval_on_trainset():
             profile = ClientProfileParser.parse(input_dir / "profile.docx")
             description = ClientDescriptionParser.parse(input_dir / "description.txt")
             with open(input_dir / "passport.json", "rb") as file:
-                passport = json.loads(file.read())
+                passport_json = json.loads(file.read())
+            # TODO: passport json should be parsed to the class again
+            # passport = ClientPassport(passport_json)
 
-            cd = ClientData(identifier, account, description, profile, passport)
+            cd = ClientData(identifier, account, description, profile, passport_json)
             prediction = rule_based_model.predict(cd)
             gt = int(path.split('/')[-3][-1])
             
