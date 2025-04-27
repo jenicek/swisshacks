@@ -2,9 +2,10 @@ import re
 import os
 import argparse  # Add import for argument parsing
 from client_data.client_description import ClientDescription
+from data_parsing.client_parser import ParserClass
 
 
-class ClientDescriptionParser:
+class ClientDescriptionParser(ParserClass):
     """Parser for client description text files"""
 
     @staticmethod

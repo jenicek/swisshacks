@@ -15,9 +15,10 @@ from client_data.client_profile import (
     IncomeRange,
     WealthSource,
 )
+from data_parsing.client_parser import ParserClass
 
 
-class ClientProfileParser:
+class ClientProfileParser(ParserClass):
     """Parser for client profile docx files"""
 
     # Checkbox symbol constant
