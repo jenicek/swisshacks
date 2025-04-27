@@ -85,3 +85,6 @@ api_responses/
 train2/
 train/
 data/
+
+# Environment
+.env
