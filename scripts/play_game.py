@@ -11,10 +11,9 @@ from decode_game_files import process_json_file
 
 from data_parsing.client_profile_parser import ClientProfileParser
 from data_parsing.client_account_parser import ClientAccountParser
-from data_parsing.parse_txt import parse_text_to_json, save_json_output
+from data_parsing.client_description_parser import ClientDescriptionParser
 from data_parsing.parse_png_vlm import parse_png_to_json
 
-# from data_parsing.parse_png import process_image_regions
 from model.rule_based_model import SimpleModel
 from client_data.client_data import ClientData
 
@@ -37,14 +36,10 @@ API_KEY = os.getenv("JULIUS_BAER_API_KEY")
 HEADERS = {"x-api-key": API_KEY}
 
 
-class Predictor:
-    """Base predictor class"""
-
-    def predict(self, data, *args, **kwargs):
-        return self._predict(data, *args, **kwargs)
-
-    def _predict(self, data, *args, **kwargs):
-        raise NotImplementedError("Subclasses must implement this method")
+def save_to_json(data, output_path):
+    """Save an object with to_json method to a JSON file"""
+    with open(output_path, "w", encoding="utf-8") as json_file:
+        json_file.write(data.to_json(indent=2, ensure_ascii=False))
 
 
 def start_game():
@@ -150,25 +145,26 @@ def run_game():
         # Parse the PNG passport image and save as JSON
         passport_png_path = output_dir / "passport.png"
         parsed_png = parse_png_to_json(passport_png_path)
+        save_to_json(parsed_png, output_dir / "passport.json")
 
         # Parse the PDF clien account banking form and save as JSON
         client_account = ClientAccountParser.parse(output_dir / "account.pdf")
-        with open(output_dir / "account.json", "w", encoding="utf-8") as json_file:
-            json_file.write(client_account.to_json(indent=2, ensure_ascii=False))
+        save_to_json(client_account, output_dir / "account.json")
 
         # Parse the client profile DOCX file and save as JSON
         client_profile = ClientProfileParser.parse(output_dir / "profile.docx")
-        with open(output_dir / "profile.json", "w", encoding="utf-8") as json_file:
-            json_file.write(client_profile.to_json(indent=2, ensure_ascii=False))
+        save_to_json(client_profile, output_dir / "profile.json")
 
         # Parse the TXT file and save as JSON
-        parsed_txt = parse_text_to_json(output_dir / "description.txt")
-        save_json_output(parsed_txt, output_dir / "description.json")
+        client_description = ClientDescriptionParser.parse(
+            output_dir / "description.txt"
+        )
+        save_to_json(client_description, output_dir / "description.json")
 
         client_file = ClientData(
             client_file=str(output_dir),
             account_form=client_account,
-            client_description=parsed_txt,
+            client_description=client_description,
             client_profile=client_profile,
             passport=parsed_png,
             label=0,
@@ -230,17 +226,17 @@ def eval_on_trainset():
 
         # Parse the PDF banking form and save as JSON
         client_account = ClientAccountParser.parse(output_dir / "account.pdf")
-        with open(output_dir / "account.json", "w", encoding="utf-8") as json_file:
-            json_file.write(client_account.to_json(indent=2, ensure_ascii=False))
+        save_to_json(client_account, output_dir / "account.json")
 
         # Parse the DOCX file and save as JSON
         client_profile = ClientProfileParser.parse(output_dir / "profile.docx")
-        with open(output_dir / "profile.json", "w", encoding="utf-8") as json_file:
-            json_file.write(client_profile.to_json(indent=2, ensure_ascii=False))
+        save_to_json(client_profile, output_dir / "profile.json")
 
         # Parse the TXT file and save as JSON
-        parsed_txt = parse_text_to_json(input_dir / "description.txt")
-        save_json_output(parsed_txt, output_dir / "description.json")
+        client_description = ClientDescriptionParser.parse(
+            output_dir / "description.txt"
+        )
+        save_to_json(client_description, output_dir / "description.json")
 
         train_iterator.predict()
         print(train_iterator, input_dir)

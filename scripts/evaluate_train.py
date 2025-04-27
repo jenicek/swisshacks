@@ -2,17 +2,19 @@ import json
 from pathlib import Path
 
 import trainset
-from data_parsing import parse_pdf_banking_form, parse_docx, parse_txt
+from data_parsing.client_profile_parser import ClientProfileParser
+from data_parsing.client_account_parser import ClientAccountParser
+from data_parsing.client_description_parser import ClientDescriptionParser
 from client_data.client_data import ClientData
 from model.rule_based_model import SimpleModel
 
 
 class TestStatistics:
     def __init__(self):  
-        self.false_positive:int = 0
-        self.false_negative:int = 0
-        self.true_positive:int = 0
-        self.true_negative:int = 0
+        self.false_positive: int = 0
+        self.false_negative: int = 0
+        self.true_positive: int = 0
+        self.true_negative: int = 0
         
     @property
     def total_correct_predictions(self):
@@ -82,14 +84,13 @@ def eval_on_trainset():
             print(input_dir)
             identifier = path.split('\\')[-1]
 
-            with open(input_dir / "account.pdf", "rb") as file:
-                form = parse_pdf_banking_form.parse_banking_pdf(file.read())
-            profile = json.loads(parse_docx.parse_docx_to_json(input_dir / "profile.docx"))
-            description = parse_txt.parse_text_to_json(input_dir / "description.txt")
+            account = ClientAccountParser.parse(input_dir / "account.pdf")
+            profile = ClientProfileParser.parse(input_dir / "profile.docx")
+            description = ClientDescriptionParser.parse(input_dir / "description.txt")
             with open(input_dir / "passport.json", "rb") as file:
                 passport = json.loads(file.read())
 
-            cd = ClientData(identifier, form, description, profile, passport)
+            cd = ClientData(identifier, account, description, profile, passport)
             prediction = rule_based_model.predict(cd)
             gt = int(path.split('/')[-3][-1])
             
