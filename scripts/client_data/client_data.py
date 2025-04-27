@@ -12,9 +12,16 @@ data_dir = PROJECT_DIR / "data"
 class ClientData:
     """Client data."""
 
-    client_file: str  # identifier
-    account_form: ClientAccount  # pdf client account form
-    client_description: dict  # txt
-    client_profile: ClientProfile  # docx client profile
-    passport: dict  # png
-    label: int | None = None  # may be none
+    # Client identifier.
+    client_file: str
+    # Parsed client account data (from pdf).
+    account_form: ClientAccount
+    # Parsed client account data (from txt).
+    client_description: dict
+    # Parsed client profile data (from docx).
+    client_profile: ClientProfile
+    # Parsed passport data (from png).
+    passport: dict
+    # Label corresponding to the ground truth information used for training.
+    # May be none.
+    label: int | None = None
