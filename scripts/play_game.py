@@ -9,11 +9,8 @@ import os
 
 from decode_game_files import process_json_file
 
-from scripts.data_parsing.client_profile_parser import ClientProfileParser
-from data_parsing.parse_pdf_banking_form import (
-    parse_banking_form,
-    save_form_data_as_json,
-)
+from data_parsing.client_profile_parser import ClientProfileParser
+from data_parsing.client_account_parser import ClientAccountParser
 from data_parsing.parse_txt import parse_text_to_json, save_json_output
 from data_parsing.parse_png_vlm import parse_png_to_json
 
@@ -154,9 +151,10 @@ def run_game():
         passport_png_path = output_dir / "passport.png"
         parsed_png = parse_png_to_json(passport_png_path)
 
-        # Parse the PDF banking form and save as JSON
-        form_data = parse_banking_form(output_dir / "account.pdf")
-        save_form_data_as_json(form_data, output_dir / "account.json")
+        # Parse the PDF clien account banking form and save as JSON
+        client_account = ClientAccountParser.parse(output_dir / "account.pdf")
+        with open(output_dir / "account.json", "w", encoding="utf-8") as json_file:
+            json_file.write(client_account.to_json(indent=2, ensure_ascii=False))
 
         # Parse the client profile DOCX file and save as JSON
         client_profile = ClientProfileParser.parse(output_dir / "profile.docx")
@@ -169,7 +167,7 @@ def run_game():
 
         client_file = ClientData(
             client_file=str(output_dir),
-            account_form=form_data,
+            account_form=client_account,
             client_description=parsed_txt,
             client_profile=client_profile,
             passport=parsed_png,
@@ -231,8 +229,9 @@ def eval_on_trainset():
         output_dir = data_dir / f"train_{path.split('/')[-1]}"
 
         # Parse the PDF banking form and save as JSON
-        form_data = parse_banking_form(input_dir / "account.pdf")
-        save_form_data_as_json(form_data, output_dir / "account.json")
+        client_account = ClientAccountParser.parse(output_dir / "account.pdf")
+        with open(output_dir / "account.json", "w", encoding="utf-8") as json_file:
+            json_file.write(client_account.to_json(indent=2, ensure_ascii=False))
 
         # Parse the DOCX file and save as JSON
         client_profile = ClientProfileParser.parse(output_dir / "profile.docx")
