@@ -12,7 +12,7 @@ from decode_game_files import process_json_file
 from data_parsing.client_profile_parser import ClientProfileParser
 from data_parsing.client_account_parser import ClientAccountParser
 from data_parsing.client_description_parser import ClientDescriptionParser
-from data_parsing.parse_png_vlm import parse_png_to_json
+from data_parsing.parse_passport_openai import parse_png_to_json
 
 from model.rule_based_model import SimpleModel
 from client_data.client_data import ClientData
