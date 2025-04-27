@@ -2,6 +2,52 @@ from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
+
+class Gender(Enum):
+    MALE = "Male"
+    FEMALE = "Female"
+
+class EmploymentType(Enum):
+    EMPLOYEE = "Employee"
+    SELF_EMPLOYED = "Self-Employed"
+    NOT_EMPLOYED = "Currently not employed"
+    RETIRED = "Retired"
+    STUDENT = "Student"
+    DIPLOMAT = "Diplomat"
+    MILITARY_REPRESENTATIVE = "Military representative"
+
+
+class MaritalStatus(Enum):
+    SINGLE = "Single"
+    MARRIED = "Married"
+    DIVORCED = "Divorced"
+    WIDOWED = "Widowed"
+    SEPARATED = "Separated"
+
+
+class RiskProfile(Enum):
+    LOW = "Low"
+    MODERATE = "Moderate"
+    CONSIDERABLE = "Considerable"
+    HIGH = "High"
+
+
+class MandateType(Enum):
+    DISCRETIONARY = "Discretionary"
+    ADVISORY = "Advisory"
+
+
+class InvestmentExperience(Enum):
+    INEXPERIENCED = "Inexperienced"
+    EXPERIENCED = "Experienced"
+    EXPERT = "Expert"
+
+
+class InvestmentHorizon(Enum):
+    SHORT_TERM = "Short"
+    MEDIUM_TERM = "Medium"
+    LONG_TERM = "Long-term"
 
 
 @dataclass_json
@@ -15,7 +61,7 @@ class ContactInfo:
 @dataclass
 class PersonalInfo:
     is_politically_exposed: bool = False
-    marital_status: Optional[str] = None
+    marital_status: Optional[MaritalStatus] = None
     highest_education: Optional[str] = None
     education_history: Optional[str] = None
 
@@ -23,7 +69,7 @@ class PersonalInfo:
 @dataclass_json
 @dataclass
 class EmploymentStatus:
-    status_type: Optional[str] = None  # "Employee", "Not employed", "Retired"
+    status_type: Optional[EmploymentType] = None
     since: Optional[str] = None
 
 
@@ -57,10 +103,10 @@ class IncomeInfo:
 @dataclass_json
 @dataclass
 class InvestmentPreferences:
-    type_of_mandate: Optional[str] = None  # Discretionary, Advisory, Execution Only
-    investment_experience: Optional[str] = None  # None, Limited, Good, Extensive
-    investment_horizon: Optional[str] = None  # Short-term, Medium-term, Long-term
-    expected_transactional_behavior: Optional[str] = None  # Low, Medium, High frequency
+    type_of_mandate: Optional[MandateType] = None
+    investment_experience: Optional[InvestmentExperience] = None
+    investment_horizon: Optional[InvestmentHorizon] = None
+    expected_transactional_behavior: Optional[str] = None
     preferred_markets: List[str] = field(default_factory=list)
 
 
@@ -69,7 +115,7 @@ class InvestmentPreferences:
 class AccountDetails:
     account_number: Optional[str] = None
     is_commercial_account: bool = False
-    risk_profile: Optional[str] = None  # Low, Moderate, Considerable, High
+    risk_profile: Optional[RiskProfile] = None
     total_assets: Optional[float] = None
     transfer_assets: Optional[float] = None
     investment_preferences: InvestmentPreferences = field(
@@ -87,7 +133,7 @@ class ClientProfile:
     id_type: Optional[str] = None
     id_issue_date: Optional[str] = None
     id_expiry_date: Optional[str] = None
-    gender: Optional[str] = None
+    gender: Optional[Gender] = None
     country_of_domicile: Optional[str] = None
     birth_date: Optional[str] = None
 
@@ -100,5 +146,4 @@ class ClientProfile:
     account_details: AccountDetails = field(default_factory=AccountDetails)
 
     # Metadata
-    filename: Optional[str] = None
     parsed_date: str = field(default_factory=lambda: datetime.now().isoformat())

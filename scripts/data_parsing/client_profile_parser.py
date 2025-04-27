@@ -1,6 +1,16 @@
 import docx
 import os
-from client_data.client_profile import ClientProfile, Employment
+from client_data.client_profile import (
+    ClientProfile,
+    Employment,
+    MaritalStatus,
+    EmploymentType,
+    RiskProfile,
+    MandateType,
+    InvestmentExperience,
+    InvestmentHorizon,
+    Gender
+)
 
 
 class ClientProfileParser:
@@ -24,25 +34,27 @@ class ClientProfileParser:
         return "☒" in text
 
     @staticmethod
-    def get_marital_status(text):
+    def get_marital_status(text) -> MaritalStatus:
         """Extract marital status from checkbox text"""
         if "☒ Divorced" in text:
-            return "Divorced"
+            return MaritalStatus.DIVORCED
         elif "☒ Married" in text:
-            return "Married"
+            return MaritalStatus.MARRIED
         elif "☒ Single" in text:
-            return "Single"
+            return MaritalStatus.SINGLE
         elif "☒ Widowed" in text:
-            return "Widowed"
+            return MaritalStatus.WIDOWED
+        elif "☒ Separated" in text:
+            return MaritalStatus.SEPARATED
         return None
 
     @staticmethod
-    def get_gender(text):
+    def get_gender(text) -> Gender:
         """Extract marital status from checkbox text"""
         if "☒ Female" in text:
-            return "Female"
+            return Gender.FEMALE
         elif "☒ Male" in text:
-            return "Male"
+            return Gender.MALE
         return None
 
     @staticmethod
@@ -79,13 +91,13 @@ class ClientProfileParser:
     def get_risk_profile(text):
         """Extract risk profile from checkbox text"""
         if "☒ Low" in text:
-            return "Low"
+            return RiskProfile.LOW
         elif "☒ Moderate" in text:
-            return "Moderate"
+            return RiskProfile.MODERATE
         elif "☒ Considerable" in text:
-            return "Considerable"
+            return RiskProfile.CONSIDERABLE
         elif "☒ High" in text:
-            return "High"
+            return RiskProfile.HIGH
         return None
 
     @staticmethod
@@ -123,34 +135,37 @@ class ClientProfileParser:
     def get_mandate_type(text):
         """Extract mandate type from checkbox text"""
         if "☒ Discretionary" in text:
-            return "Discretionary"
+            return MandateType.DISCRETIONARY
         elif "☒ Advisory" in text:
-            return "Advisory"
-        elif "☒ Execution Only" in text:
-            return "Execution Only"
+            return MandateType.ADVISORY
         return None
 
     @staticmethod
     def get_investment_experience(text):
         """Extract investment experience level from checkbox text"""
         if "☒ Inexperienced" in text:
-            return "Inexperienced"
+            return InvestmentExperience.INEXPERIENCED
         elif "☒ Experienced" in text:
-            return "Experienced"
+            return InvestmentExperience.EXPERIENCED
         elif "☒ Expert" in text:
-            return "Expert"
+            return InvestmentExperience.EXPERT
         return None
 
     @staticmethod
     def get_investment_horizon(text):
         """Extract investment horizon from checkbox text"""
         if "☒ Short" in text:
-            return "Short"
+            return InvestmentHorizon.SHORT_TERM
         elif "☒ Medium" in text:
-            return "Medium"
+            return InvestmentHorizon.MEDIUM_TERM
         elif "☒ Long-Term" in text:
-            return "Long-Term"
+            return InvestmentHorizon.LONG_TERM
         return None
+
+    @staticmethod
+    def get_transaction_frequency(text):
+        """Extract transaction frequency from text"""
+        return text
 
     @staticmethod
     def extract_preferred_markets(text):
@@ -159,9 +174,9 @@ class ClientProfileParser:
         return [market.strip() for market in markets] if markets else []
 
     @staticmethod
-    def parse_docx_file(file_path):
+    def parse(file_path: str) -> ClientProfile:
         """Parse a docx file and return a ClientProfile object"""
-        client = ClientProfile(filename=os.path.basename(file_path))
+        client = ClientProfile()
         primary_employment = Employment()
 
         try:
@@ -238,9 +253,7 @@ class ClientProfileParser:
 
                         if "Current employment and function" in row_label:
                             if "Employee" in row_value:
-                                primary_employment.current_status.status_type = (
-                                    "Employee"
-                                )
+                                primary_employment.current_status.status_type = EmploymentType.EMPLOYEE
                                 # Extract the "Since" date
                                 if "Since" in row_value:
                                     primary_employment.current_status.since = (
@@ -269,9 +282,7 @@ class ClientProfileParser:
                             "Currently not employed" in row_value
                             and ClientProfileParser.find_checkbox_value(row_value)
                         ):
-                            primary_employment.current_status.status_type = (
-                                "Not employed"
-                            )
+                            primary_employment.current_status.status_type = EmploymentType.NOT_EMPLOYED
                             if "Since" in row_value:
                                 since_value = row_value.split("Since")[1].strip()
                                 if since_value:
@@ -288,7 +299,7 @@ class ClientProfileParser:
                             "Retired" in row_value
                             and ClientProfileParser.find_checkbox_value(row_value)
                         ):
-                            primary_employment.current_status.status_type = "Retired"
+                            primary_employment.current_status.status_type = EmploymentType.RETIRED
                             if "Since" in row_value:
                                 since_value = row_value.split("Since")[1].strip()
                                 if since_value:
@@ -365,7 +376,7 @@ class ClientProfileParser:
                                 row_value
                             )
                         elif "Expected Transactional Behavior" in row_label:
-                            client.account_details.investment_preferences.expected_transactional_behavior = row_value
+                            client.account_details.investment_preferences.expected_transactional_behavior = ClientProfileParser.get_transaction_frequency(row_value)
                         elif "Preferred Markets" in row_label:
                             client.account_details.investment_preferences.preferred_markets = ClientProfileParser.extract_preferred_markets(
                                 row_value
@@ -408,7 +419,7 @@ def parse_docx_client_profile_to_json(docx_file_path, output_json_path=None):
     Returns:
         JSON string if output_json_path is None, otherwise None
     """
-    client_profile = ClientProfileParser.parse_docx_file(docx_file_path)
+    client_profile = ClientProfileParser.parse(docx_file_path)
 
     # Convert to JSON
     json_data = client_profile.to_json(indent=2, ensure_ascii=False)
