@@ -161,15 +161,18 @@ def run_game():
         )
         save_to_json(client_description, output_dir / "description.json")
 
-        client_file = ClientData(
-            client_file=str(output_dir),
-            account_form=client_account,
-            client_description=client_description,
-            client_profile=client_profile,
-            passport=parsed_png,
-            label=0,
-        )
-        decision = predictor.predict(client_file)
+        try:
+            client_file = ClientData(
+                client_file=str(output_dir),
+                account_form=client_account,
+                client_description=client_description,
+                client_profile=client_profile,
+                passport=parsed_png,
+            )
+            decision = predictor.predict(client_file)
+        except AssertionError as e:
+            print(f"Error in client data: {e}")
+            decision = 0  # Default to Reject if there's an error
 
         print(f"Decision: {decision}")
         response = send_decision(session_id, current_client_id, decision)

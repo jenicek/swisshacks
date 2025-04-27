@@ -1,38 +1,12 @@
 from openai import AzureOpenAI
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 import base64
 import os
 
 
-# Create an Azure OpenAI client
-# client = AzureOpenAI(
-#     api_key=api_key,
-#     api_version="2025-01-01-preview",  # GPT-4o is under this version
-#     azure_endpoint="https://swisshacks-3plus1.openai.azure.com"
-# )
-
-# # Make the API call
-# response = client.chat.completions.create(
-#     model="gpt-4o",  # Use the deployment name you chose
-#     messages=[
-#         {"role": "system", "content": "You are a helpful assistant."},
-#         {"role": "user", "content": "Tell me a joke."}
-#     ]
-# )
-
-# print(response.choices[0].message.content)
-
-class Predictor:
-    """Base predictor class"""
-    def predict(self, data, *args, **kwargs):
-        return self._predict(data, *args, **kwargs)
-    
-    def _predict(self, data, *args, **kwargs):
-        raise NotImplementedError("Subclasses must implement this method")
-
-class OpenAIPredictor(Predictor):
+class OpenAIPredictor():
 
     def __init__(self, rulebook_path: str | Path):
         super().__init__()
@@ -204,7 +178,7 @@ if __name__ == "__main__":
     passport_png = base_dir / "passport.png"
     
     # Create a simple rules file if it doesn't exist
-    rules_path = Path("c:/Users/jekatrinaj/swisshacks/scripts/openai/validation_rules.txt")
+    rules_path = Path("./validation_rules.txt")
     if not rules_path.exists():
         with open(rules_path, "w") as f:
             f.write("""

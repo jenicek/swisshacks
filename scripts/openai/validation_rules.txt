@@ -1,7 +1,0 @@
-
-            1. Names must be consistent across all documents
-            2. Passport number must match between passport and account documents
-            3. Address information must be consistent
-            4. Critical fields must not be empty
-            5. Date formats must be valid
-            
