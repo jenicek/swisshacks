@@ -1,10 +1,5 @@
-import requests
 import json
-import time
-import hashlib
 from pathlib import Path
-import base64
-import dataclasses
 
 import trainset
 from data_parsing import parse_pdf_banking_form, parse_docx, parse_txt
