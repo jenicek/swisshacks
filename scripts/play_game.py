@@ -9,7 +9,7 @@ import os
 
 from decode_game_files import process_json_file
 
-from data_parsing.parse_docx import parse_docx_to_json
+from scripts.data_parsing.client_profile_parser import ClientProfileParser
 from data_parsing.parse_pdf_banking_form import (
     parse_banking_form,
     save_form_data_as_json,
@@ -21,16 +21,16 @@ from data_parsing.parse_png_vlm import parse_png_to_json
 from model.rule_based_model import SimpleModel
 from client_data.client_data import ClientData
 
+from storage import store_dict
+import trainset
+
 
 # Get the project root directory (assuming scripts is directly under project root)
 PROJECT_ROOT = Path(__file__).parent.parent.absolute()
 
 # Load .env file from project root
 print(f"Env path: {os.path.join(PROJECT_ROOT, '.env')}")
-load_dotenv(os.path.join(PROJECT_ROOT, '.env'))
-
-from storage import store_dict
-import trainset
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
 
 
 data_dir = PROJECT_ROOT / "data"
@@ -39,8 +39,10 @@ BASE_URL = "https://hackathon-api.mlo.sehlat.io"
 API_KEY = os.getenv("JULIUS_BAER_API_KEY")
 HEADERS = {"x-api-key": API_KEY}
 
+
 class Predictor:
     """Base predictor class"""
+
     def predict(self, data, *args, **kwargs):
         return self._predict(data, *args, **kwargs)
 
@@ -114,7 +116,6 @@ def save_result(client_data, score, status, answer):
 
     print(f"test/{result}/{formatted_score}/{toMd5(client_data)}")
     store_dict(client_data, f"test/{result}/{formatted_score}/{toMd5(client_data)}")
-
     # print(f"\nlevel_{formatted_score}-answer_{answer}_result_{result}.json")
 
 
@@ -139,7 +140,7 @@ def run_game():
     # Run the queries
     queries_made = 0
     start_time = time.time()
-    
+
     predictor = SimpleModel()
 
     while True:  # Run indefinitely until game over
@@ -157,22 +158,25 @@ def run_game():
         form_data = parse_banking_form(output_dir / "account.pdf")
         save_form_data_as_json(form_data, output_dir / "account.json")
 
-        # Parse the DOCX file and save as JSON
-        profile_data = parse_docx_to_json(output_dir / "profile.docx", output_dir / "profile.json")
+        # Parse the client profile DOCX file and save as JSON
+        client_profile = ClientProfileParser.parse(output_dir / "profile.docx")
+        with open(output_dir / "profile.json", "w", encoding="utf-8") as json_file:
+            json_file.write(client_profile.to_json(indent=2, ensure_ascii=False))
 
         # Parse the TXT file and save as JSON
         parsed_txt = parse_text_to_json(output_dir / "description.txt")
         save_json_output(parsed_txt, output_dir / "description.json")
 
         client_file = ClientData(
-        client_file=str(output_dir),
-        account_form=form_data,
-        client_description=parsed_txt,
-        client_profile=json.loads(profile_data),
-        passport=parsed_png,
-        label=0)
+            client_file=str(output_dir),
+            account_form=form_data,
+            client_description=parsed_txt,
+            client_profile=client_profile,
+            passport=parsed_png,
+            label=0,
+        )
         decision = predictor.predict(client_file)
-        
+
         print(f"Decision: {decision}")
         response = send_decision(session_id, current_client_id, decision)
 
@@ -220,7 +224,6 @@ def run_game_continuously():
         time.sleep(1)  # Delay before starting a new game
 
 
-
 def eval_on_trainset():
     train_iterator = trainset.TrainIterator(limit=10)
     for path in train_iterator:
@@ -232,14 +235,13 @@ def eval_on_trainset():
         save_form_data_as_json(form_data, output_dir / "account.json")
 
         # Parse the DOCX file and save as JSON
-        parse_docx_to_json(input_dir / "profile.docx", output_dir / "profile.json")
+        client_profile = ClientProfileParser.parse(output_dir / "profile.docx")
+        with open(output_dir / "profile.json", "w", encoding="utf-8") as json_file:
+            json_file.write(client_profile.to_json(indent=2, ensure_ascii=False))
 
         # Parse the TXT file and save as JSON
         parsed_txt = parse_text_to_json(input_dir / "description.txt")
         save_json_output(parsed_txt, output_dir / "description.json")
-
-        predictor = SimpleModel()
-        
 
         train_iterator.predict()
         print(train_iterator, input_dir)

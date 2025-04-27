@@ -4,9 +4,11 @@ from typing import List, Optional
 from datetime import datetime
 from enum import Enum
 
+
 class Gender(Enum):
     MALE = "Male"
     FEMALE = "Female"
+
 
 class EmploymentType(Enum):
     EMPLOYEE = "Employee"
@@ -24,6 +26,16 @@ class MaritalStatus(Enum):
     DIVORCED = "Divorced"
     WIDOWED = "Widowed"
     SEPARATED = "Separated"
+
+
+class WealthSource(Enum):
+    EMPLOYMENT = "Employment"
+    INHERITANCE = "Inheritance"
+    BUSINESS = "Business"
+    INVESTMENTS = "Investments"
+    REAL_ESTATE = "Sale of real estate"
+    RETIREMENT = "Retirement package"
+    OTHER = "Other"
 
 
 class RiskProfile(Enum):
@@ -48,6 +60,22 @@ class InvestmentHorizon(Enum):
     SHORT_TERM = "Short"
     MEDIUM_TERM = "Medium"
     LONG_TERM = "Long-term"
+
+
+class WealthRange(Enum):
+    LESS_THAN_1_5M = "< EUR 1.5m"
+    FROM_1_5M_TO_5M = "EUR 1.5m-5m"
+    FROM_5M_TO_10M = "EUR 5m-10m"
+    FROM_10M_TO_20M = "EUR 10m.-20m"
+    FROM_20M_TO_50M = "EUR 20m.-50m"
+    MORE_THAN_50M = "> EUR 50m"
+
+
+class IncomeRange(Enum):
+    LESS_THAN_250K = "< EUR 250,000"
+    FROM_250K_TO_500K = "EUR 250,000 - 500,000"
+    FROM_500K_TO_1M = "EUR 500,000 – 1m"
+    MORE_THAN_1M = "> EUR 1m"
 
 
 @dataclass_json
@@ -87,16 +115,16 @@ class Employment:
 @dataclass_json
 @dataclass
 class WealthInfo:
-    total_wealth_range: Optional[str] = None
+    total_wealth_range: Optional[WealthRange] = None
     wealth_sources: List[str] = field(default_factory=list)
     source_info: List[str] = field(default_factory=list)
-    assets: List[str] = field(default_factory=list)
+    assets: dict = field(default_factory=dict)
 
 
 @dataclass_json
 @dataclass
 class IncomeInfo:
-    total_income_range: Optional[str] = None
+    total_income_range: Optional[IncomeRange] = None
     source_info: Optional[str] = None
 
 
