@@ -38,6 +38,7 @@ wheels/
 
 # Virtual Environment
 venv/
+.venv/
 ENV/
 env/
 
@@ -46,6 +47,7 @@ env/
 .env.development.local
 .env.test.local
 .env.production.local
+.env
 
 # Database
 *.db
@@ -80,11 +82,7 @@ terraform.rc
 crash.log
 crash.*.log
 
-# API Responses
-api_responses/
+# Data
 train2/
 train/
 data/
-
-# Environment
-.env
