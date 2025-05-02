@@ -1,10 +1,9 @@
+#system imports
 import re
 import argparse
 from io import BytesIO
-from client_data.client_account import (
-    ClientAccount,
-)
 import io
+from pathlib import Path
 from typing import Union, BinaryIO, Dict, Any
 
 try:
@@ -12,8 +11,11 @@ try:
 except ImportError:
     raise ImportError("PyPDF2 package is required. Install it with: pip install PyPDF2")
 
+# local imports
+from client_data.client_account import ClientAccount
+from data_parsing.client_parser import ParserClass
 
-class ClientAccountParser:
+class ClientAccountParser(ParserClass):
     """Parser for client account pdf files"""
 
     @staticmethod
@@ -304,7 +306,7 @@ class ClientAccountParser:
         return client_account
 
     @staticmethod
-    def parse(pdf_path: str) -> ClientAccount:
+    def parse(pdf_path: Path) -> ClientAccount:
         """Parse the client account pdf file and return a ClientAccount object"""
         # Read the PDF file
         with open(pdf_path, "rb") as file:

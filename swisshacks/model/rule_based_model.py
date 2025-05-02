@@ -1,6 +1,8 @@
 from client_data.client_data import ClientData
+from client_data.client_passport import ClientPassport
 import re
 import os
+from enum import Enum
 import logging
 from datetime import datetime, date
 from typing import Tuple
@@ -21,14 +23,6 @@ logging.basicConfig(
 logger = logging.getLogger("validation")
 
 
-# def remove_accents(text):
-#     # Normalize to NFKD form (decomposes characters)
-#     nfkd_form = unicodedata.normalize("NFKD", text)
-#     # Filter out diacritical marks
-#     only_ascii = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-#     return only_ascii
-
-
 def remove_accents(input_str) -> str:
     # Normalize to NFKD form and encode to ASCII bytes, ignoring non-ASCII chars
     normalized = unicodedata.normalize("NFKD", input_str)
@@ -37,62 +31,62 @@ def remove_accents(input_str) -> str:
 
 
 class SimpleModel(BasePredictor):
-    def predict(self, client: ClientData) -> int:
+    def predict(self, client: ClientData) -> bool:
         # Missing value check is already done in the client_data class
         if flag_verify_email(client):
             print("Email mismatch")
-            return 0
+            return False
         if flag_phone(client):
             print("Phone number mismatch")
-            return 0
+            return False
         if flag_country(client):
             print("Country mismatch")
-            return 0
+            return False
         if flag_inconsistent_name(client):
-            return 0
+            return False
         if flag_passport(client):
             print("Passport mismatch")
-            return 0
+            return False
         if flag_address(client):
             print("Address mismatch")
-            return 0
+            return False
         if flag_birth_date(client):
             print("Birth date mismatch")
-            return 0
+            return False
         if flag_nationality(client):
             print("Nationality mismatch")
-            return 0
+            return False
         if flat_date_consistencies(client):
             print("Date inconsistencies detected")
-            return 0
+            return False
         if flag_wealth(client):
             print("Wealth inconsistencies detected")
-            return 0
+            return False
         if flag_gender(client):
             print("Gender mismatch")
-            return 0
+            return False
         if flat_date_consistencies(client):
             print("Date inconsistencies detected")
-            return 0
+            return False
         if flag_description(client):
             print("Description mismatch")
-            return 0
+            return False
         if flag_passport_country_code(client):
             print("Passport country code mismatch")
-            return 0
+            return False
         # If all checks pass, return 1
-        return 1 
+        return True
 
 
 def flag_gender(client: ClientData) -> bool:
-    if client.client_profile.gender[0] != client.passport.gender:
+    if client.client_profile.gender.value != client.passport.sex.value:
         return True
     return False
 
 
 def flag_passport_country_code(client: ClientData) -> bool:
     passport_country_code = client.passport.country_code
-    passport_country_name = client.passport.country
+    passport_country_name = client.passport.issuing_country
 
     if len(passport_country_code) != 3:
         print("Passport country code is incorrect!")
@@ -147,13 +141,13 @@ def flag_country(client: ClientData) -> bool:
 
 
 def flag_nationality(client: ClientData) -> bool:
-    passport_nationality = client.passport.nationality.lower()
+    passport_nationality = client.passport.citizenship.lower()
     profile_nationality = client.client_profile.nationality.lower()
 
     if len(passport_nationality) == len(profile_nationality):
         if passport_nationality != profile_nationality:
             print(
-                f"Client nationality mismatch: {client.passport.nationality} != {client.client_profile.nationality}"
+                f"Client nationality mismatch: {client.passport.citizenship} != {client.client_profile.nationality}"
             )
             return True
     else:
@@ -165,7 +159,7 @@ def flag_nationality(client: ClientData) -> bool:
     return False
 
 
-def flag_address(client: ClientData):
+def flag_address(client: ClientData) -> bool:
     address = client.client_profile.address  # i.e., "Place de la Concorde 17, 26627 Toulon"
     street, street_number, postal_code, city = "", "", "", ""
     if address:
@@ -197,11 +191,6 @@ def flag_address(client: ClientData):
             else:
                 postal_code = location_part
 
-    # Log the parsed address for debugging
-    # logger.info(
-    #     f"Parsed address: street='{street}', number='{street_number}', postal='{postal_code}', city='{city}'"
-    # )
-
     if remove_accents(street) != remove_accents(client.account_form.street_name):
         return True
     if street_number != client.account_form.building_number:
@@ -214,34 +203,34 @@ def flag_address(client: ClientData):
     return False
 
 
-def flag_inconsistent_name(client: ClientData):
+def flag_inconsistent_name(client: ClientData) -> bool:
     """
     Check if the name in the client profile and passport are inconsistent.
     """
 
     profile_last_name: str = remove_accents(
-        client.client_profile.get("last_name").lower()
+        client.client_profile.last_name.lower()
     )
     profile_given_name: str = remove_accents(
-        client.client_profile.get("first_name").lower()
+        client.client_profile.first_name.lower()
     )
     profile_full_name: str = remove_accents(
         " ".join([profile_given_name, profile_last_name]).lower().strip()
     )
 
     account_account_name: str = remove_accents(
-        client.account_form.get("account_name").lower()
+        client.account_form.account_name.lower()
     )
     account_holder_name: str = remove_accents(
-        client.account_form.get("account_holder_name").lower()
+        client.account_form.account_holder_name.lower()
     )
     account_holder_surname: str = remove_accents(
-        client.account_form.get("account_holder_surname").lower()
+        client.account_form.account_holder_surname.lower()
     )
-    account_name: str = remove_accents(client.account_form.get("name").lower())
+    account_name: str = remove_accents(client.account_form.name.lower())
 
-    passport_last_name: str = remove_accents(client.passport.get("last_name").lower())
-    passport_given_name: str = remove_accents(client.passport.get("given_name").lower())
+    passport_last_name: str = remove_accents(client.passport.surname.lower())
+    passport_given_name: str = remove_accents(client.passport.given_name.lower())
 
     # account.json data consistency
     if account_account_name != account_name:
@@ -278,9 +267,9 @@ def flag_inconsistent_name(client: ClientData):
     return False
 
 
-def simple_mrz(passport_data: dict) -> Tuple[str, str]:
+def simple_mrz(passport_data: ClientPassport) -> Tuple[str, str]:
     # Clean up passport data to remove accents and special characters
-    last_name = remove_accents(passport_data.last_name)
+    last_name = remove_accents(passport_data.surname)
     first_name = remove_accents(passport_data.given_name)
 
     names = first_name.split(" ")  # Take only the first part of the name
@@ -300,7 +289,7 @@ def simple_mrz(passport_data: dict) -> Tuple[str, str]:
     birth_date = datetime.strptime(passport_data.birth_date, "%Y-%m-%d").strftime(
         "%y%m%d"
     )
-    line2 = f"{passport_data.passport_number.upper()}{passport_data.country_code}{birth_date}"
+    line2 = f"{passport_data.number.upper()}{passport_data.country_code}{birth_date}"
     return [remove_accents(l1.upper()) for l1 in line1], line2.upper()
 
 
@@ -308,7 +297,7 @@ def flag_passport(client: ClientData):
     if not (
         client.client_profile.passport_id
         == client.account_form.passport_number
-        == client.passport.passport_number
+        == client.passport.number
     ):
         print(
             f"Passport numbers are not matching: {client.client_profile.passport_id} != {client.account_form.passport_number} != {client.passport.passport_number}"
@@ -332,7 +321,7 @@ def flag_passport(client: ClientData):
         print(mrz_line2[:18], passport_line2[:18])
         return True
 
-    if not re.match("\w\w\d{7}", client.passport.passport_number):
+    if not re.match("\w\w\d{7}", client.passport.number):
         return True
 
     return False
@@ -345,8 +334,8 @@ def flag_birth_date(client: ClientData):
         )
         return True
 
-    passport_issue_date = client.passport.passport_issue_date
-    passport_expiry_date = client.passport.passport_expiry_date
+    passport_issue_date = client.passport.issue_date
+    passport_expiry_date = client.passport.expiry_date
 
     if client.client_profile.id_type == "passport":
         if passport_issue_date != client.client_profile.id_issue_date:
@@ -449,14 +438,15 @@ def find_redundant_sentences(data_dict):
     return redundant_sentences
 
 
-def flat_date_consistencies(client: ClientData):
-    for field1, field2 in (
+def flat_date_consistencies(client: ClientData) -> bool:
+    for passport_field_name, profile_field_name in (
         ("birth_date", "birth_date"),
-        ("passport_issue_date", "id_issue_date"),
-        ("passport_expiry_date", "id_expiry_date"),
-        ("passport_number", "passport_id"),
+        ("issue_date", "id_issue_date"),
+        ("expiry_date", "id_expiry_date"),
+        ("number", "passport_id"),
     ):
-        if client.passport[field1] != client.client_profile[field2]:
+        
+        if getattr(client.passport, passport_field_name) != getattr(client.client_profile, profile_field_name):
             return True
 
     today = datetime.strptime("2025-04-13", "%Y-%m-%d").date()
@@ -486,7 +476,7 @@ def flat_date_consistencies(client: ClientData):
 # TODO: Check valid passport
 
 
-def flag_wealth(client: ClientData):
+def flag_wealth(client: ClientData) -> bool:
     total_assets = client.client_profile.account_details.total_assets
     transfer_assets = client.client_profile.account_details.transfer_assets
 
@@ -514,7 +504,6 @@ def flag_wealth(client: ClientData):
     # "< EUR 1.5m", "EUR 1.5m-5m", "EUR 5m-10m", "EUR 10m.-20m", "EUR 20m.-50m", "> EUR 50m"
 
     # Check if the total assets fall within the specified range
-    total_wealth_range = total_wealth_range.replace(" ", "")
     if total_wealth_range == "< EUR 1.5m" and combined_assets > 1_500_000:
         return True
     elif total_wealth_range == "EUR 1.5m-5m" and (
@@ -562,7 +551,7 @@ fill these keys:
     "savings": savings,
     "inheritance": boolean inheritance (1 word, i.e., true, false),
     "inherited_from": inherited_from (1 word, i.e., grandmother, father, mother, uncle, aunt, etc.),
-    "inheritment_year": inheritment_year (YYYY),
+    "inheritance_year": inheritance_year (YYYY),
     "occupation_of_the_person_from_whom_inherited": occupation_of_the_person_from_whom_inherited,
 }}
  DONT infer data, just use whats there.
@@ -587,11 +576,11 @@ def flag_compare_age(gpt_age, client: ClientData):
     return abs(gpt_age - birthday_age) > 2
 
 
-def simple_compare(gpt_value, client_value):
+def simple_compare(gpt_value, client_value: Enum):
     if gpt_value in (None, "", "none", "None"):
         return False
     gpt_value = str(gpt_value).lower()
-    client_value = str(client_value).lower()
+    client_value = client_value.value.lower()
 
     return gpt_value != client_value
 
@@ -637,19 +626,19 @@ def flag_description(client: ClientData):
         return True
 
     if simple_compare(
-        response_data.get("company"), client.client_profile.employment[0]["employer"]
+        response_data.get("company"), client.client_profile.employment[0].employer
     ):
         print(
-            f"company mismatch: {response_data.get('company')} != {client.client_profile.employment[0]['employer']}"
+            f"company mismatch: {response_data.get('company')} != {client.client_profile.employment[0].employer}"
         )
         return True
 
     if simple_compare(
         response_data.get("position"),
-        client.client_profile.employment[0]["position"],
+        client.client_profile.employment[0].position,
     ):
         print(
-            f"position mismatch: {response_data.get('position')} != {client.client_profile.employment[0]['position']}"
+            f"position mismatch: {response_data.get('position')} != {client.client_profile.employment[0].position}"
         )
         return True
 
@@ -666,7 +655,7 @@ def flag_description(client: ClientData):
     # Inheritance source
     if inheritance:
         inh_from = response_data.get("inherited_from")
-        inh_year = response_data.get("inheritment_year")
+        inh_year = response_data.get("inheritance_year")
         inh_pos = response_data.get("occupation_of_the_person_from_whom_inherited")
 
         inh_info = client.client_profile.wealth_info.source_info

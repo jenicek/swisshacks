@@ -24,7 +24,7 @@ class OpenAIPredictor(BasePredictor):
             - Check if the description of the client adds up with the numbers and backstories.
             - You can reason for yourself shortly.
             - last line of your response should be a json {'reject': true/false}.
-            - Most importanyl reject only if the document breaks one of these rules:
+            - Most importantly reject only if the document breaks one of these rules:
             - {rules}
             
             HERE is the data: {data}

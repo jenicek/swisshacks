@@ -3,16 +3,24 @@ from dataclasses_json import dataclass_json
 from enum import Enum
 
 class GenderEnum(Enum):
-    MALE = "M"
-    FEMALE = "F"
-
+    MALE = "Male"
+    FEMALE = "Female"
+    
+    def convert_str_to_enum(value: str) -> 'GenderEnum':
+        """Convert string to GenderEnum."""
+        if value.lower() in ("m", "male"):
+            return GenderEnum.MALE
+        elif value.lower() in ("f", "female"):
+            return GenderEnum.FEMALE
+        else:
+            raise ValueError(f"Invalid value for GenderEnum: {value!r}")
 
 @dataclass_json
 @dataclass
 class ClientPassport:
     given_name: str
     surname: str
-    sex: str
+    sex: GenderEnum
     birth_date: str
     citizenship: str
     issuing_country: str

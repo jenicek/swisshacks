@@ -1,10 +1,10 @@
-import json
 from pathlib import Path
 
 import trainset
 from data_parsing.client_profile_parser import ClientProfileParser
 from data_parsing.client_account_parser import ClientAccountParser
 from data_parsing.client_description_parser import ClientDescriptionParser
+from data_parsing.client_passport_parser import ClientPassportParser, PassportBackendType
 from client_data.client_data import ClientData
 from model.rule_based_model import SimpleModel
 
@@ -77,6 +77,7 @@ def eval_on_trainset():
     trainiter = trainset.TrainIterator()
     rule_based_model = SimpleModel()
     stats = TestStatistics()
+    passport_parser = ClientPassportParser(PassportBackendType.OPENAI)
 
     try:
         for path in trainiter:
@@ -84,11 +85,13 @@ def eval_on_trainset():
             print(input_dir)
             identifier = path.split('\\')[-1]
 
-            account = ClientAccountParser.parse(input_dir / "account.pdf")
+            account = ClientAccountParser.parse(str(input_dir / "account.pdf"))
             profile = ClientProfileParser.parse(input_dir / "profile.docx")
             description = ClientDescriptionParser.parse(input_dir / "description.txt")
-            with open(input_dir / "passport.json", "rb") as file:
-                passport = json.loads(file.read())
+            passport = passport_parser.parse(input_dir / "passport.png")
+            
+            # with open(input_dir / "passport.json", "rb") as file:
+            #     passport = json.loads(file.read())
 
             cd = ClientData(identifier, account, description, profile, passport)
             prediction = rule_based_model.predict(cd)
@@ -106,8 +109,8 @@ def eval_on_trainset():
                 print(stats)
     except KeyboardInterrupt:
         print("User interrupted the run")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+    # except Exception as e:
+    #     print(f"An error occurred: {e}")
     finally: 
         print("Final Statistics:") 
         print(stats)

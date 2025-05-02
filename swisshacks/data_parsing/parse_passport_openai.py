@@ -4,7 +4,7 @@ from pathlib import Path
 import os
 from openai import AzureOpenAI
 
-from client_data.client_passport import ClientPassport
+from client_data.client_passport import ClientPassport, GenderEnum
 
 # Get API key from environment variable or define it
 api_key = os.environ.get("AZURE_OPENAI_API_KEY")
@@ -21,8 +21,8 @@ class PassportParserOpenAI():
             api_key=api_key,
             api_version="2025-03-01-preview",
             azure_endpoint=api_endpoint,
-        )
-        
+        )       
+
     def parse(self, path_to_file: Path) -> ClientPassport:
         """
         Parse a passport image file to extract structured data.
@@ -45,8 +45,12 @@ class PassportParserOpenAI():
             
         passport_data = self.parse_png(encoded_data)
         
+        passport_data["sex"] = GenderEnum.convert_str_to_enum(passport_data.get("sex"))
+        
+        
         # Create a ClientPassport object from the parsed data and return it
         return ClientPassport(**passport_data)
+
 
     def parse_png(self, encoded_image: bytes) -> dict:
         """
@@ -56,7 +60,7 @@ class PassportParserOpenAI():
         # Define expected JSON schema for passport data
         passport_json_schema = """{
         "given_name": "string",
-        "last_name": "string",
+        "surname": "string",
         "sex": "string",
         "birth_date": "YYYY-MM-DD",
         "citizenship": "string",

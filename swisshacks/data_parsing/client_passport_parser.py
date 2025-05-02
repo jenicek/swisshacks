@@ -2,23 +2,23 @@ from pathlib import Path
 from enum import Enum
 
 from client_data.client_passport import ClientPassport
-from client_parser import ParserClass
+from data_parsing.client_parser import ParserClass
 
 class PassportBackendType(Enum):
     OPENAI = "openai"
     EASY_OCR = "easyocr"
     TESSERACT = "tesseract"
 
-class PassportParser(ParserClass):
+class ClientPassportParser(ParserClass):
     def __init__(self, backend_type: PassportBackendType):
         self.backend_type = backend_type
         self.parser = None
         
         if backend_type == PassportBackendType.OPENAI:
-            from parse_passport_openai import PassportParserOpenAI
+            from data_parsing.parse_passport_openai import PassportParserOpenAI
             self.parser = PassportParserOpenAI()
         elif backend_type == PassportBackendType.EASY_OCR:
-            from parse_passport_easyocr import PassportParserEasyOCR
+            from data_parsing.parse_passport_easyocr import PassportParserEasyOCR
             self.parser = PassportParserEasyOCR()
         elif backend_type == PassportBackendType.TESSERACT:
             raise NotImplementedError("Tesseract backend is not implemented yet.")

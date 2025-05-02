@@ -1,14 +1,16 @@
 import re
 import os
+from pathlib import Path
 import argparse  # Add import for argument parsing
+
 from client_data.client_description import ClientDescription
+from data_parsing.client_parser import ParserClass
 
-
-class ClientDescriptionParser:
+class ClientDescriptionParser(ParserClass):
     """Parser for client description text files"""
 
     @staticmethod
-    def parse(text_path: str) -> ClientDescription:
+    def parse(text_path: Path) -> ClientDescription:
         """
         Parse the client description text file and return a ClientDescription object
         

@@ -10,7 +10,7 @@ import cv2  # OpenCV for visualization
 from PIL import Image
 
 # local imports
-from swisshacks.client_data.client_passport import ClientPassport
+from client_data.client_passport import ClientPassport, GenderEnum
 
 FIELD_BB ={
     "issuing_country": [(10,21), (370,21), (370,40), (10,40)],
@@ -77,6 +77,13 @@ class PassportParserEasyOCR:
                 extracted_fields["signature"] = True
             return extracted_fields
         
+        def post_process_sex(extracted_fields: dict) -> dict:
+            if extracted_fields["sex"] is None:
+                raise ValueError("Sex was not parsed correctly")
+            
+            extracted_fields["sex"] = GenderEnum.convert_str_to_enum(extracted_fields["sex"]) 
+            return extracted_fields  
+            
         
         # Read the image using EasyOCR
         if not passport_file_path.exists():
@@ -114,6 +121,7 @@ class PassportParserEasyOCR:
         
         post_process_MRZ(extraction_results)
         post_process_signature(extraction_results)
+        post_process_sex(extraction_results)
         
         return ClientPassport(**extraction_results)
     
