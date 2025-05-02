@@ -8,26 +8,36 @@ import os
 from model.base_predictor import BasePredictor
 from client_data.client_data import ClientData
 
+DEFAULT_RULEBOOK_PATH = Path(__file__).parent / "validation_rules.txt"
 
 class OpenAIPredictor(BasePredictor):
-    def __init__(self, rulebook_path: str | Path):
+    def __init__(self, rulebook_path: Path = None):
         super().__init__()
+
+        if rulebook_path is None:
+            rulebook_path = DEFAULT_RULEBOOK_PATH
 
         with open(rulebook_path, "r") as f:
             self.rules = f.read()
 
-    def predict(self, client_data: ClientData) -> int:
+    def predict(self,client_data: ClientData) -> bool:
+        passport = client_data.passport.to_json()
+        account = client_data.account_form.to_json()
+        profile = client_data.client_profile.to_json()
+        description = client_data.client_description.to_json()
+
+
+
         PROMPT = """
-            HERE is a client data, that we would like to verify that has no inconsistencies.
-            We would like to reject the application if something does not add up, or misses a field.
-            - Compare fields across documents
+            Here is a set of JSON files containing information about a client. Verify the content for any logical inconsistencies.
+            - Compare the logically matching fields across documents
             - Check if the description of the client adds up with the numbers and backstories.
             - You can reason for yourself shortly.
             - last line of your response should be a json {'reject': true/false}.
             - Most importantly reject only if the document breaks one of these rules:
             - {rules}
-            
-            HERE is the data: {data}
+
+            Here is the JSON data: passport {passport}, account {account}, profile {profile}, description {description}
         """
         client_openai = AzureOpenAI(
             api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -46,7 +56,10 @@ class OpenAIPredictor(BasePredictor):
                     "role": "user",
                     "content": PROMPT.format(
                         rules=self.rules,
-                        data=json.dumps(client_data.to_dict(), indent=2),
+                        passport=passport,
+                        account=account,
+                        profile=profile,
+                        description=description,
                     ),
                 },
             ],
@@ -58,8 +71,8 @@ class OpenAIPredictor(BasePredictor):
 
         # Check if the response contains the decision
         if "{'reject': true}" in response_content.lower():
-            return 0  # Rejected
-        return 1  # Accepted
+            return False  # Rejected
+        return True
 
 
 def check_data_consistency(
@@ -107,15 +120,15 @@ def check_data_consistency(
     # Create prompt for consistency check
     consistency_prompt = f"""
     Analyze the provided client data for consistency across different documents.
-    
+
     Account data: {json.dumps(account_data, indent=2)}
-    
+
     Profile data: {json.dumps(profile_data, indent=2)}
-    
+
     Description data: {json.dumps(description_data, indent=2)}
-    
+
     The passport image is also provided as base64. Please check if the data is consistent across all sources.
-    
+
     Check for:
     1. Name consistency across all documents. Ordering of given name and surname may vary and it is not considered an inconsistency.
     2. Address consistency
@@ -124,7 +137,7 @@ def check_data_consistency(
     5. Any signs of fraud or data manipulation
     6. Validate MRZ is of valid format and matches the passport number, holders name nationality and date of birth.
     7. Check if signatures are consistent across documents.
-    
+
     Provide detailed reasoning about any inconsistencies found.
     Respond with a JSON structure that includes:
     - "is_consistent": true/false

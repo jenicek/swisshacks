@@ -146,17 +146,17 @@ def flag_phone(client: ClientData) -> bool:
         return False
 
     account_phone_number = client.account_form.phone_number.replace(" ", "")
-    client_phone_number = client.client_profile.contact_info.telephone.replace(" ", "")
+    profile_phone_number = client.client_profile.contact_info.telephone.replace(" ", "")
 
     if check_phone_number_formats(account_phone_number):
         print(f"Account phone number format is incorrect: {account_phone_number}")
         return True
-    if check_phone_number_formats(client_phone_number):
-        print(f"Client phone number format is incorrect: {client_phone_number}")
+    if check_phone_number_formats(profile_phone_number):
+        print(f"Client phone number format is incorrect: {profile_phone_number}")
         return True
 
-    if account_phone_number != client_phone_number:
-        print(f"Client phone number mismatch: {account_phone_number} != {client_phone_number}")
+    if account_phone_number != profile_phone_number:
+        print(f"Client phone number mismatch: {account_phone_number=} != {profile_phone_number=}")
         return True
 
     return False

@@ -6,7 +6,8 @@ from data_parsing.client_account_parser import ClientAccountParser
 from data_parsing.client_description_parser import ClientDescriptionParser
 from data_parsing.client_passport_parser import ClientPassportParser, PassportBackendType
 from client_data.client_data import ClientData
-from model.rule_based_model import SimpleModel
+
+from model.document_validation_model import DocumentValidationFactory, ValidationModelType
 
 
 class TestStatistics:
@@ -75,7 +76,7 @@ class TestStatistics:
 
 def eval_on_trainset():
     trainiter = trainset.TrainIterator()
-    rule_based_model = SimpleModel()
+    model = DocumentValidationFactory.create_model(ValidationModelType.RULE_BASED)()
     stats = TestStatistics()
     passport_parser = ClientPassportParser(PassportBackendType.OPENAI)
 
@@ -94,14 +95,14 @@ def eval_on_trainset():
             #     passport = json.loads(file.read())
 
             cd = ClientData(identifier, account, description, profile, passport)
-            prediction = rule_based_model.predict(cd)
-            gt = bool(path.split('/')[-3][-1])
+            prediction = model.predict(cd)
+            gt = bool(int((path.split('/')[-3][-1])))
 
             stats.add_measurement(bool(prediction), bool(gt))
 
             print(f"Prediction: {prediction}, GT: {gt}, Status: {gt == prediction}")
 
-            trainiter.predict(prediction == 1)
+            trainiter.predict(prediction)
             print(trainiter, input_dir)
             print("----------")
 
