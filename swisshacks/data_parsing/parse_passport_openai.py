@@ -35,6 +35,19 @@ class PassportParserOpenAI():
         """
         
         ""
+        def preprocess_issuing_country(passport: dict) -> dict:
+            issuing_country_strings = passport["issuing_country"].lower().split("/")
+            issuing_country_strings = [s.strip() for s in issuing_country_strings]
+            
+            if len(issuing_country_strings) == 1:
+                passport["issuing_country"] = issuing_country_strings[0]
+                return passport
+            elif len(issuing_country_strings) == 2:
+                passport["issuing_country"] = issuing_country_strings[1]
+                return passport
+            else:
+                raise ValueError(f"Issuing country format is not recognized: {passport.issuing_country!r}")
+        
         if not path_to_file.exists():
             raise FileNotFoundError(f"File '{path_to_file}' does not exist")
         
@@ -46,7 +59,7 @@ class PassportParserOpenAI():
         passport_data = self.parse_png(encoded_data)
         
         passport_data["sex"] = GenderEnum.convert_str_to_enum(passport_data.get("sex"))
-        
+        preprocess_issuing_country(passport_data)
         
         # Create a ClientPassport object from the parsed data and return it
         return ClientPassport(**passport_data)
