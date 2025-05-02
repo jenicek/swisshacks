@@ -32,6 +32,11 @@ def remove_accents(input_str) -> str:
 
 class SimpleModel(BasePredictor):
     def predict(self, client: ClientData) -> bool:
+
+        if flag_invalid_client_data(client):
+            print("Client data is invalid")
+            return False
+
         # Missing value check is already done in the client_data class
         if flag_verify_email(client):
             print("Email mismatch")
@@ -78,8 +83,14 @@ class SimpleModel(BasePredictor):
         return True
 
 
+def flag_invalid_client_data(client: ClientData) -> bool:
+    if not client.is_valid:
+        return True
+    return False
+
 def flag_gender(client: ClientData) -> bool:
     if client.client_profile.gender.value != client.passport.sex.value:
+        print(f" {client.client_profile.gender.value=} != {client.passport.sex.value=}")
         return True
     return False
 
@@ -114,28 +125,46 @@ def flag_verify_email(client: ClientData) -> bool:
 
     # Check if the email in the account form matches the one in the client profile
     if client.account_form.email != client.client_profile.contact_info.email:
+        print(f"Client account email {client.account_form.email} does not match profile email {client.client_profile.contact_info.email}")
         return True
     if not re.match(email_pattern, client.account_form.email):
+        print(f"Account email {client.account_form.email} is not valid")
         return True
     return False
 
 
 def flag_phone(client: ClientData) -> bool:
-    phone_number = client.account_form.phone_number.replace(" ", "")
 
-    if phone_number != client.client_profile.contact_info.telephone.replace(" ", ""):
+    def check_phone_number_formats(phone_number_string: str) -> bool:
+        # Check if the phone number contains only digits and optional leading '+'
+        if not re.match("^\+?\d+$", phone_number_string):
+            return True
+        # Check if the phone number is too long or too short
+        if len(phone_number_string) > 15 or len(phone_number_string) < 8:
+            return True
+
+        return False
+
+    account_phone_number = client.account_form.phone_number.replace(" ", "")
+    client_phone_number = client.client_profile.contact_info.telephone.replace(" ", "")
+
+    if check_phone_number_formats(account_phone_number):
+        print(f"Account phone number format is incorrect: {account_phone_number}")
         return True
-    # Check if the phone number contains only digits and optional leading '+'
-    if not re.match("^\+?\d+$", phone_number):
+    if check_phone_number_formats(client_phone_number):
+        print(f"Client phone number format is incorrect: {client_phone_number}")
         return True
-    # Check if the phone number is too long or too short
-    if len(phone_number) > 15 or len(phone_number) < 8:
+
+    if account_phone_number != client_phone_number:
+        print(f"Client phone number mismatch: {account_phone_number} != {client_phone_number}")
         return True
+
     return False
 
 
 def flag_country(client: ClientData) -> bool:
     if client.account_form.country != client.client_profile.country_of_domicile:
+        print(f"Client country mismatch: {client.account_form.country} != {client.client_profile.country_of_domicile}")
         return True
     return False
 
@@ -192,12 +221,16 @@ def flag_address(client: ClientData) -> bool:
                 postal_code = location_part
 
     if remove_accents(street) != remove_accents(client.account_form.street_name):
+        print(f"Street name mismatch: {street} != {client.account_form.street_name}")
         return True
     if street_number != client.account_form.building_number:
+        print(f"Street number mismatch: {street_number} != {client.account_form.building_number}")
         return True
     if postal_code != client.account_form.postal_code:
+        print(f"Postal code mismatch: {postal_code} != {client.account_form.postal_code}")
         return True
     if remove_accents(city) != remove_accents(client.account_form.city):
+        print(f"City mismatch: {city} != {client.account_form.city}")
         return True
 
     return False
@@ -300,7 +333,7 @@ def flag_passport(client: ClientData):
         == client.passport.number
     ):
         print(
-            f"Passport numbers are not matching: {client.client_profile.passport_id} != {client.account_form.passport_number} != {client.passport.passport_number}"
+            f"Passport numbers are not matching: {client.client_profile.passport_id} != {client.account_form.passport_number} != {client.passport.number}"
         )
         return True
 
@@ -415,11 +448,11 @@ def flag_birth_date(client: ClientData):
     return False
 
 
-def find_redundant_sentences(data_dict):
+def find_redundant_sentences(data_dict: dict):
     sentence_map = defaultdict(set)
 
     # Helper: normalize a sentence
-    def clean_sentence(sentence):
+    def clean_sentence(sentence: str):
         return re.sub(r"\s+", " ", sentence.strip()).rstrip(".")
 
     # Step 1: Split and map sentences to fields
@@ -445,7 +478,7 @@ def flat_date_consistencies(client: ClientData) -> bool:
         ("expiry_date", "id_expiry_date"),
         ("number", "passport_id"),
     ):
-        
+
         if getattr(client.passport, passport_field_name) != getattr(client.client_profile, profile_field_name):
             return True
 
@@ -536,13 +569,13 @@ fill these keys:
 {{
     "age": age,
     "marital_status": single / married / divorced / widowed
-    "education": 
+    "education":
            {{
                  "university": university,
                  "graduation_year": graduation_year
            }}
     ,
-    "employment": 
+    "employment":
     {{
         "company": company,
         "position": position
@@ -557,7 +590,7 @@ fill these keys:
  DONT infer data, just use whats there.
  Missing values should be marked with empty string ""
  Denominations, dimensions for prices and numbers should be ignored. just put the number e.g 15000 and NOT 15000 EUR. marital status should be 1 word, e.g. single, married, divorced, widowed
- output should be a valid json with the given template. just fill the values, nothing else. 
+ output should be a valid json with the given template. just fill the values, nothing else.
 """
 
 
@@ -674,7 +707,7 @@ def flag_description(client: ClientData):
 
         # if education:
         #     edu_prof = client.client_profile.personal_info.education_history
-        #     
+        #
 
     # except Exception as e:
     #     logger.error(f"Error processing response: {e}")

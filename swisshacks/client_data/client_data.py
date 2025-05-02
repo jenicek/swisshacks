@@ -28,13 +28,34 @@ class ClientData:
     # for training. May be none.
     label: int | None = None
 
-    def __post_init__(self):
-        assert self.account_form is not None, "Account form cannot be None"
-        assert self.client_description is not None, "Client description cannot be None"
-        assert self.client_profile is not None, "Client profile cannot be None"
-        assert self.passport is not None, "Passport cannot be None"
+    is_valid: bool = True
 
-        assert self.account_form.is_valid(), "Account form is not valid"
-        assert self.client_description.is_valid(), "Client description is not valid"
-        assert self.client_profile.is_valid(), "Client profile is not valid"
-        assert self.passport.is_valid(), "Passport is not valid"
+    def __post_init__(self):
+
+        if self.account_form is None:
+            print("Account form cannot be None")
+            self.is_valid = False
+        if not self.account_form.is_valid():
+            print("Account form is invalid")
+            self.is_valid = False
+
+        if self.client_description is None:
+            print("Client description cannot be None")
+            self.is_valid = False
+        if not self.client_description.is_valid():
+            print("Client description is invalid")
+            self.is_valid = False
+
+        if self.client_profile is None:
+            print("Client profile cannot be None")
+            self.is_valid = False
+        if not self.client_profile.is_valid():
+            print("Client profile is invalid")
+            self.is_valid = False
+
+        if self.passport is None:
+            print("Passport cannot be None")
+            self.is_valid = False
+        if not self.passport.is_valid():
+            print("Passport is invalid")
+            self.is_valid = False

@@ -10,31 +10,31 @@ from model.rule_based_model import SimpleModel
 
 
 class TestStatistics:
-    def __init__(self):  
+    def __init__(self):
         self.false_positive: int = 0
         self.false_negative: int = 0
         self.true_positive: int = 0
         self.true_negative: int = 0
-        
+
     @property
     def total_correct_predictions(self):
         return self.true_positive + self.true_negative
-    
+
     @property
     def total_incorrect_predictions(self):
         return self.false_positive + self.false_negative
-    
+
     @property
     def total_samples(self):
         return self.total_correct_predictions + self.total_incorrect_predictions
-    
+
     @property
     def accuracy(self):
         if self.total_samples == 0:
             return 0
         return (self.total_correct_predictions) / self.total_samples
 
-    def add_measurement(self, prediction: bool, ground_truth: bool):       
+    def add_measurement(self, prediction: bool, ground_truth: bool):
         if prediction is True:
             if ground_truth is True:
                 self.true_positive += 1
@@ -44,8 +44,8 @@ class TestStatistics:
             if ground_truth is True:
                 self.false_negative += 1
             else:
-                self.true_negative += 1     
-          
+                self.true_negative += 1
+
     def get_confusion_matrix_dict(self) -> dict:
         return {
             "TP": self.true_positive,
@@ -53,10 +53,10 @@ class TestStatistics:
             "FP": self.false_positive,
             "FN": self.false_negative,
         }
-        
+
     def print_confusion_matrix(self):
         matrix = self.get_confusion_matrix_dict()
-        
+
         # Create ASCII table for confusion matrix with proper axes
         print("\nConfusion Matrix:")
         print("+" + "-" * 31 + "+")
@@ -69,7 +69,7 @@ class TestStatistics:
         print("|" + " Truth ".center(10) + "+" + "-" * 9 + "+" + "-" * 10 + "+")
         print("|" + "Negative".center(10) + "|" + f"FP: {matrix['FP']}".center(9) + "|" + f"TN: {matrix['TN']}".center(10) + "|")
         print("+" + "-" * 10 + "+" + "-" * 9 + "+" + "-" * 10 + "+")
-    
+
     def __str__(self):
         return f"Total: {self.total_samples}, Correct: {self.total_correct_predictions}, Incorrect: {self.total_incorrect_predictions}, Accuracy: {self.accuracy:.2f}, TP: {self.true_positive}, TN: {self.true_negative}, FP: {self.false_positive}, FN: {self.false_negative}"
 
@@ -89,30 +89,30 @@ def eval_on_trainset():
             profile = ClientProfileParser.parse(input_dir / "profile.docx")
             description = ClientDescriptionParser.parse(input_dir / "description.txt")
             passport = passport_parser.parse(input_dir / "passport.png")
-            
+
             # with open(input_dir / "passport.json", "rb") as file:
             #     passport = json.loads(file.read())
 
             cd = ClientData(identifier, account, description, profile, passport)
             prediction = rule_based_model.predict(cd)
-            gt = int(path.split('/')[-3][-1])
-            
+            gt = bool(path.split('/')[-3][-1])
+
             stats.add_measurement(bool(prediction), bool(gt))
-            
+
             print(f"Prediction: {prediction}, GT: {gt}, Status: {gt == prediction}")
 
             trainiter.predict(prediction == 1)
             print(trainiter, input_dir)
             print("----------")
-            
+
             if stats.total_samples % 50 == 0:
                 print(stats)
     except KeyboardInterrupt:
         print("User interrupted the run")
     # except Exception as e:
     #     print(f"An error occurred: {e}")
-    finally: 
-        print("Final Statistics:") 
+    finally:
+        print("Final Statistics:")
         print(stats)
         stats.print_confusion_matrix()
 
