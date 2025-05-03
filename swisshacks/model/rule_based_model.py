@@ -8,7 +8,6 @@ from datetime import datetime, date
 from typing import Tuple
 import unicodedata
 import textdistance
-from collections import defaultdict
 import pycountry
 from openai import AzureOpenAI
 import json
@@ -70,9 +69,6 @@ class SimpleModel(BasePredictor):
         if flag_gender(client):
             print("Gender mismatch")
             return False
-        if flat_date_consistencies(client):
-            print("Date inconsistencies detected")
-            return False
         if flag_description(client):
             print("Description mismatch")
             return False
@@ -90,7 +86,7 @@ def flag_invalid_client_data(client: ClientData) -> bool:
 
 def flag_gender(client: ClientData) -> bool:
     if client.client_profile.gender.value != client.passport.sex.value:
-        print(f" {client.client_profile.gender.value=} != {client.passport.sex.value=}")
+        print(f"Gender mismatch {client.client_profile.gender.value=} != {client.passport.sex.value=}")
         return True
     return False
 
@@ -447,31 +443,13 @@ def flag_birth_date(client: ClientData):
 
     return False
 
-
-def find_redundant_sentences(data_dict: dict):
-    sentence_map = defaultdict(set)
-
-    # Helper: normalize a sentence
-    def clean_sentence(sentence: str):
-        return re.sub(r"\s+", " ", sentence.strip()).rstrip(".")
-
-    # Step 1: Split and map sentences to fields
-    for field, content in data_dict.items():
-        sentences = re.split(r"(?<=[.!?])\s+", content)
-        for raw_sentence in sentences:
-            sentence = clean_sentence(raw_sentence)
-            if sentence:
-                sentence_map[sentence].add(field)
-
-    # Step 2: Find duplicates (appearing in >1 field)
-    redundant_sentences = {
-        sentence: fields for sentence, fields in sentence_map.items() if len(fields) > 1
-    }
-
-    return redundant_sentences
-
-
 def flat_date_consistencies(client: ClientData) -> bool:
+
+    MINIMM_WORKING_AGE = 15
+    MINIMUM_GRADUATION_AGE = 10
+    MAXIMUM_APPLICANT_AGE = 120
+    MINIMUM_APPLICANT_AGE = 18
+
     for passport_field_name, profile_field_name in (
         ("birth_date", "birth_date"),
         ("issue_date", "id_issue_date"),
@@ -493,20 +471,54 @@ def flat_date_consistencies(client: ClientData) -> bool:
         client.client_profile.id_expiry_date, "%Y-%m-%d"
     ).date()
 
-    # TODO: validate dates from key "employment"
+    for employment in client.client_profile.employment:
+        if employment.current_status.since not in ["", None]:
+            # Check if the date is in the past
+            print("Employment start date:", employment.current_status.since)
+            if int(employment.current_status.since) > int(today.year)+1:
+                print(f"Employment start date is in the future: {employment.current_status.since}")
+                return True
+            # Check the date is after the person's birth date
+            if int(employment.current_status.since) < int(birth_date.year):
+                print(f"Employment start date is before birth date: {employment.current_status.since} < {birth_date.year}")
+                return True
+            # Check that the person was at least 15 years old when they started working
+            if int(employment.current_status.since) < int(birth_date.year) + MINIMM_WORKING_AGE:
+                print(f"Employment start date is too early: {employment.current_status.since} < {birth_date.year + MINIMM_WORKING_AGE}")
+                return True
+            
+    if client.client_profile.personal_info.highest_education is not None:
+        # The date is in the string in (YYYY) format
+        print("Highest education:", client.client_profile.personal_info.education_history)
+        graduation_year = re.search(r"\d{4}", client.client_profile.personal_info.education_history)
+
+        if graduation_year is not None:
+            graduation_year = graduation_year.group()
+            print("Graduation year:", graduation_year)
+            graduation_year = int(graduation_year)
+            if graduation_year > today.year + 1:
+                print(f"Graduation year is in the future: {graduation_year}")
+                return True
+            if graduation_year < birth_date.year:
+                print(f"Graduation year is before birth date: {graduation_year} < {birth_date.year}")
+                return True
+            if graduation_year < birth_date.year + MINIMUM_GRADUATION_AGE:
+                print(f"Graduation year is too early: {graduation_year} < {birth_date.year + MINIMUM_GRADUATION_AGE}")
+                return True
+
 
     if not birth_date < issue_date < today:
+        print(f"Passport issue date {issue_date} is not valid: bd-{birth_date} < issue-{issue_date} < now-{today}")
         return True
     if not issue_date < expiry_date:
+        print(f"Passport expiry date {expiry_date} is not valid: issue-{issue_date} < expiry-{expiry_date}")
         return True
-    if not 18 <= today.year - birth_date.year < 120:
+    if not MINIMUM_APPLICANT_AGE <= today.year - birth_date.year < MAXIMUM_APPLICANT_AGE:
+        print(f"Client age is not valid: {today.year - birth_date.year} years old")
         return True
     return False
 
-
-# TODO: check correct dates (i.e., work since <today, graduation_year < today)
 # TODO: Check passport dates are reasonable; (not too far in the past, not too far in the future)
-# TODO: Check valid passport
 
 
 def flag_wealth(client: ClientData) -> bool:
@@ -569,11 +581,17 @@ fill these keys:
 {{
     "age": age,
     "marital_status": single / married / divorced / widowed
-    "education":
+    "university_education":
            {{
                  "university": university,
                  "graduation_year": graduation_year
            }}
+    ,
+    "secondary_education":
+              {{
+                  "school": school,
+                  "graduation_year": graduation_year
+              }}
     ,
     "employment":
     {{
@@ -641,6 +659,7 @@ def flag_description(client: ClientData):
     except json.decoder.JSONDecodeError:
         return False
 
+    print("Parsed description:")
     print(response_data)
 
     if flag_compare_age(response_data.get("age"), client):
@@ -702,8 +721,9 @@ def flag_description(client: ClientData):
             print(f"inheritance position mismatch: {inh_pos} != {inh_info}")
             return True
 
-        # # Education
-        # education = response_data.get('education')
+        # # Education university and secondary
+        # university_education = response_data.get('university_education')
+        # secondary_education = response_data.get('secondary_education')
 
         # if education:
         #     edu_prof = client.client_profile.personal_info.education_history
