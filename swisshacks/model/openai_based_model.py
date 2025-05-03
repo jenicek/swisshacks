@@ -26,12 +26,12 @@ class OpenAIPredictor(BasePredictor):
         description = client_data.client_description.to_json()
 
         PROMPT = """
-            Here is a set of JSON files containing information about a client. Verify the content for any logical inconsistencies.
-            - Compare the logically matching fields across documents
-            - Check if the description of the client adds up with the numbers and backstories.
+            Here is a set of JSON files containing information about a client. Verify the content for any logical, semantic, chronological or other inconsistencies.
+            - Compare the logically matching fields across all input JSON documents
+            - Check if the description JSON of the client adds up with the wealth assets they report and backstories of their life, including logical consistency of dates.
             - You can reason for yourself shortly.
-            - last line of your response should be a JSON format with bool field: 'reject': true/false.
-            - Most importantly reject only if the document breaks one of these rules:
+            - last line of your response must contain a JSON formatted string with boolean field: 'reject': true/false, based on your final decision on document rejection.
+            - Most importantly always reject the documents if they break one of these rules:
             - {rules}
 
             Here is the JSON data: passport {passport}, account {account}, profile {profile}, description {description}
