@@ -76,7 +76,7 @@ class TestStatistics:
 
 def eval_on_trainset():
     trainiter = trainset.TrainIterator()
-    model = DocumentValidationFactory.create_model(ValidationModelType.LAYERED)()
+    model = DocumentValidationFactory.create_model(ValidationModelType.RULE_BASED)()
     stats = TestStatistics()
     passport_parser = ClientPassportParser(PassportBackendType.OPENAI)
 
@@ -84,19 +84,16 @@ def eval_on_trainset():
         for path in trainiter:
             input_dir = Path(path)
             print(input_dir)
-            identifier = path.split('\\')[-1]
+            identifier = path.split('/')[-1]
 
             account = ClientAccountParser.parse(str(input_dir / "account.pdf"))
             profile = ClientProfileParser.parse(input_dir / "profile.docx")
             description = ClientDescriptionParser.parse(input_dir / "description.txt")
             passport = passport_parser.parse(input_dir / "passport.png")
 
-            # with open(input_dir / "passport.json", "rb") as file:
-            #     passport = json.loads(file.read())
-
             cd = ClientData(identifier, account, description, profile, passport)
             prediction = model.predict(cd)
-            gt = bool(int((path.split('\\')[-3][-1])))
+            gt = bool(int((path.split('/')[-3][-1])))
 
             stats.add_measurement(bool(prediction), bool(gt))
 
@@ -110,8 +107,6 @@ def eval_on_trainset():
                 print(stats)
     except KeyboardInterrupt:
         print("User interrupted the run")
-    # except Exception as e:
-    #     print(f"An error occurred: {e}")
     finally:
         print("Final Statistics:")
         print(stats)
