@@ -21,9 +21,10 @@ class LayeredModel(BasePredictor):
         rule_based_prediction = self.rule_based_model.predict(client)
 
         # If the rule-based model is uncertain, use the language model
-        if rule_based_prediction is True:
-            language_model_prediction = self.language_model.predict(client)
-            return language_model_prediction
+        if rule_based_prediction is False:
+            return rule_based_prediction
 
-        return rule_based_prediction
+        language_model_prediction = self.language_model.predict(client)
+        return language_model_prediction
+
 

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 import base64
 import os
+import re
 
 from model.base_predictor import BasePredictor
 from client_data.client_data import ClientData
@@ -23,8 +24,6 @@ class OpenAIPredictor(BasePredictor):
         account = client_data.account_form.to_json()
         profile = client_data.client_profile.to_json()
         description = client_data.client_description.to_json()
-
-
 
         PROMPT = """
             Here is a set of JSON files containing information about a client. Verify the content for any logical inconsistencies.
@@ -67,10 +66,14 @@ class OpenAIPredictor(BasePredictor):
         response_content = response.choices[0].message.content
         print(f"Validation response: {response_content}")
 
-        # Check if the response contains the decision
-        if "{'reject': true}" in response_content.lower():
-            return False  # Rejected
-        return True
+        regex_match = re.search(r"```json\n*\{\n*\s*[\"\']reject[\"\']:\s*(?P<reject_result>\w+)\s*\n*\}\n*```", response_content)
+        if regex_match:
+            print(f"Regex match succeeded, extracted decision: {regex_match.group('reject_result')}")
+            return bool(regex_match.group("reject_result").lower() == "false")
+        else:
+            print("Regex match failed, trying to find the decision in the text")
+            raise RuntimeError
+
 
 
 def check_data_consistency(
