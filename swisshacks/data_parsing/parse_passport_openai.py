@@ -21,7 +21,7 @@ class PassportParserOpenAI():
             api_key=api_key,
             api_version="2025-03-01-preview",
             azure_endpoint=api_endpoint,
-        )       
+        )
 
     def parse(self, path_to_file: Path) -> ClientPassport:
         """
@@ -33,12 +33,12 @@ class PassportParserOpenAI():
         Returns:
             ClientPassport object containing extracted passport information
         """
-        
+
         ""
         def preprocess_issuing_country(passport: dict) -> dict:
             issuing_country_strings = passport["issuing_country"].lower().split("/")
             issuing_country_strings = [s.strip() for s in issuing_country_strings]
-            
+
             if len(issuing_country_strings) == 1:
                 passport["issuing_country"] = issuing_country_strings[0]
                 return passport
@@ -46,21 +46,21 @@ class PassportParserOpenAI():
                 passport["issuing_country"] = issuing_country_strings[1]
                 return passport
             else:
-                raise ValueError(f"Issuing country format is not recognized: {passport.issuing_country!r}")
-        
+                raise ValueError(f"Issuing country format is not recognized: {passport['issuing_country']!r}")
+
         if not path_to_file.exists():
-            raise FileNotFoundError(f"File '{path_to_file}' does not exist")
-        
+            raise FileNotFoundError(f"File '{path_to_file!r}' does not exist")
+
         # Encode PNG as base64 for the AI to analyze
         with open(path_to_file, "rb") as image_file:
             image_data = image_file.read()
             encoded_data = base64.b64encode(image_data).decode("utf-8")
-            
+
         passport_data = self.parse_png(encoded_data)
-        
+
         passport_data["sex"] = GenderEnum.convert_str_to_enum(passport_data.get("sex"))
         preprocess_issuing_country(passport_data)
-        
+
         # Create a ClientPassport object from the parsed data and return it
         return ClientPassport(**passport_data)
 
@@ -122,4 +122,3 @@ class PassportParserOpenAI():
             raise
 
         return passport_data
-    

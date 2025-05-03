@@ -76,7 +76,7 @@ class TestStatistics:
 
 def eval_on_trainset():
     trainiter = trainset.TrainIterator()
-    model = DocumentValidationFactory.create_model(ValidationModelType.RULE_BASED)()
+    model = DocumentValidationFactory.create_model(ValidationModelType.LAYERED)()
     stats = TestStatistics()
     passport_parser = ClientPassportParser(PassportBackendType.OPENAI)
 

@@ -221,16 +221,16 @@ def flag_address(client: ClientData) -> bool:
                 postal_code = location_part
 
     if remove_accents(street) != remove_accents(client.account_form.street_name):
-        print(f"Street name mismatch: {street} != {client.account_form.street_name}")
+        print(f"Street name mismatch: {street=} != {client.account_form.street_name=}")
         return True
     if street_number != client.account_form.building_number:
-        print(f"Street number mismatch: {street_number} != {client.account_form.building_number}")
+        print(f"Street number mismatch: {street_number=} != {client.account_form.building_number=}")
         return True
     if postal_code != client.account_form.postal_code:
-        print(f"Postal code mismatch: {postal_code} != {client.account_form.postal_code}")
+        print(f"Postal code mismatch: {postal_code=} != {client.account_form.postal_code=}")
         return True
     if remove_accents(city) != remove_accents(client.account_form.city):
-        print(f"City mismatch: {city} != {client.account_form.city}")
+        print(f"City mismatch: {city=} != {client.account_form.city=}")
         return True
 
     return False

@@ -12,8 +12,6 @@ DEFAULT_RULEBOOK_PATH = Path(__file__).parent / "validation_rules.txt"
 
 class OpenAIPredictor(BasePredictor):
     def __init__(self, rulebook_path: Path = None):
-        super().__init__()
-
         if rulebook_path is None:
             rulebook_path = DEFAULT_RULEBOOK_PATH
 
@@ -33,7 +31,7 @@ class OpenAIPredictor(BasePredictor):
             - Compare the logically matching fields across documents
             - Check if the description of the client adds up with the numbers and backstories.
             - You can reason for yourself shortly.
-            - last line of your response should be a json {'reject': true/false}.
+            - last line of your response should be a JSON format with bool field: 'reject': true/false.
             - Most importantly reject only if the document breaks one of these rules:
             - {rules}
 
