@@ -96,7 +96,7 @@ def eval_on_trainset():
 
             cd = ClientData(identifier, account, description, profile, passport)
             prediction = model.predict(cd)
-            gt = bool(int((path.split('/')[-3][-1])))
+            gt = bool(int((path.split('\\')[-3][-1])))
 
             stats.add_measurement(bool(prediction), bool(gt))
 

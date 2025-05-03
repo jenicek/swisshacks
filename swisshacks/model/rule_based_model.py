@@ -605,9 +605,10 @@ fill these keys:
     "inheritance_year": inheritance_year (YYYY),
     "occupation_of_the_person_from_whom_inherited": occupation_of_the_person_from_whom_inherited,
 }}
- DONT infer data, just use whats there.
- Missing values should be marked with empty string ""
- Denominations, dimensions for prices and numbers should be ignored. just put the number e.g 15000 and NOT 15000 EUR. marital status should be 1 word, e.g. single, married, divorced, widowed
+ DONT infer data, just use what is there.
+ Missing values should be marked with empty string "".
+ Denominations, dimensions for prices and numbers should be ignored. just put the number e.g 15000 and NOT 15000 EUR. 
+ Marital status should be 1 word, e.g. single, married, divorced, widowed.
  output should be a valid json with the given template. just fill the values, nothing else.
 """
 
@@ -721,16 +722,62 @@ def flag_description(client: ClientData):
             print(f"inheritance position mismatch: {inh_pos} != {inh_info}")
             return True
 
-        # # Education university and secondary
-        # university_education = response_data.get('university_education')
-        # secondary_education = response_data.get('secondary_education')
+    # Education university and secondary
+    university_education = response_data.get('university_education')
+    secondary_education = response_data.get('secondary_education')
 
-        # if education:
-        #     edu_prof = client.client_profile.personal_info.education_history
-        #
+    if university_education.get('university') != "":
+        # Check if the university name is in the education history
+        edu_prof = client.client_profile.personal_info.education_history
+  
+        if university_education.get('university') not in edu_prof:
+            print(f"University name mismatch: {university_education} not in {edu_prof}")
+            return True
+        # Check that graduation year is in the education history
+        graduation_year = university_education.get('graduation_year')
+        if graduation_year and str(graduation_year) not in edu_prof:
+            print(f"Graduation year mismatch: {graduation_year} not in {edu_prof}")
+            return True
+        # Check that graduation year is reasonable: clients should be at least 18 years old when graduating from university
+        graduation_year = int(graduation_year)
+        today = datetime.today()
+        birth_date = datetime.strptime(client.client_profile.birth_date, "%Y-%m-%d").date()
+        age_at_graduation = graduation_year - birth_date.year
+        if age_at_graduation > today.year - birth_date.year:
+            print(f"Client claims to be {age_at_graduation} years old at university graduation")
+            return True
+        # Check that highest education level is "Tertiary"
+        if client.client_profile.personal_info.highest_education != "Tertiary":
+            print(f"Highest education level mismatch: {client.client_profile.personal_info.highest_education} != Tertiary")
+            return True
 
-    # except Exception as e:
-    #     logger.error(f"Error processing response: {e}")
-    #     return False
+    if secondary_education.get('school') != "":
+        # Check that secondary education is completed before university education if applicable
+        if secondary_education.get('graduation_year') != "":
+            secondary_year = secondary_education.get('graduation_year')
+            if university_education.get('graduation_year') != "":
+                university_year = university_education.get('graduation_year')
+                if secondary_year and university_year and int(secondary_year) >= int(university_year):
+                    print(f"Secondary education year {secondary_year} is not before university year {university_year}")
+                    return True
+            else:
+                # If no university is porvided, check that profile indicates correct secondary education
+                if client.client_profile.personal_info.highest_education != "Secondary":
+                    print(f"Highest education level mismatch: {client.client_profile.personal_info.highest_education} != Secondary")
+                    return True
+                if secondary_education.get('school') not in client.client_profile.personal_info.education_history:
+                    print(f"Secondary school name mismatch: {secondary_education.get('school')} not in {client.client_profile.personal_info.education_history}")
+                    return True
+            # Check that secondary education graduation year is reasonable: clients should be at least 15 years old when graduating from secondary school
+            graduation_year = int(secondary_year)
+            today = datetime.today()
+            birth_date = datetime.strptime(client.client_profile.birth_date, "%Y-%m-%d").date()
+            age_at_graduation = graduation_year - birth_date.year
+            if graduation_year > today.year:
+                print(f"Secondary education graduation year {graduation_year} is in the future")
+                return True
+            if age_at_graduation < 15:
+                print(f"Secondary education graduation year {graduation_year} indicates client is too young: {age_at_graduation} years old")
+                return True
 
     return False
